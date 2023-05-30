@@ -1,0 +1,10 @@
+{
+	"CHARACTER_TAB_NAME": {
+		"enable": true,
+		"name": "CHARACTER_BASEMODEL",
+        "title": "CHARACTER_NAME",
+        "cover": "CHARACTER_IMAGE",
+		"feature_retrieval_library": "CHARACTER_MODEL_INDEX",
+		"author": "MODEL_AUTHOR"
+    }
+}

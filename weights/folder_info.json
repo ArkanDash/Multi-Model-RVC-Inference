@@ -1,0 +1,8 @@
+{
+    "CATEGORY_TAB_NAME":{
+        "enable": true,
+        "title": "CATEGORY_TITLE",
+        "folder_path": "CATEGORY_FOLDER_PATH",
+        "description": "CATEGORY_DESCRIPTION"
+    }
+}
