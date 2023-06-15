@@ -380,3 +380,4 @@ monotonic_align/core.c
 /dist
 
 .idea
+infer-web.py
