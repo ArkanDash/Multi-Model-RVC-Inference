@@ -30,17 +30,10 @@ logging.getLogger("numba").setLevel(logging.WARNING)
 
 def create_vc_fn(tgt_sr, net_g, vc, if_f0, file_index):
     def vc_fn(
-        # Gradio
         vc_input, 
         vc_upload,
-        vc_download_audio,
-        vc_link,
-        vc_split_model,
-        vc_split,
-        vc_vocal_preview,
         tts_text,
         tts_voice,
-        # Function
         f0_up_key,
         vc_transform,
         f0_method,
@@ -172,20 +165,7 @@ def load_hubert():
         hubert_model = hubert_model.float()
     hubert_model.eval()
 
-def change_audio_mode(
-        vc_audio_mode,
-        vc_input, 
-        vc_upload,
-        vc_download_audio,
-        vc_link,
-        vc_split_model,
-        vc_split,
-        vc_vocal_preview,
-        vc_inst_preview,
-        vc_audio_preview,
-        tts_text,
-        tts_voice
-    ):
+def change_audio_mode(vc_audio_mode):
     if vc_audio_mode == "Input path":
         return (
             # Input & Upload
@@ -199,6 +179,9 @@ def change_audio_mode(
             gr.Audio.update(visible=False),
             gr.Audio.update(visible=False),
             gr.Audio.update(visible=False),
+            gr.Slider.update(visible=False),
+            gr.Audio.update(visible=False),
+            gr.Button.update(visible=False),
             # TTS
             gr.Textbox.update(visible=False),
             gr.Dropdown.update(visible=False)
@@ -216,6 +199,7 @@ def change_audio_mode(
             gr.Audio.update(visible=False),
             gr.Audio.update(visible=False),
             gr.Audio.update(visible=False),
+            gr.Slider.update(visible=False),
             # TTS
             gr.Textbox.update(visible=False),
             gr.Dropdown.update(visible=False)
@@ -233,6 +217,9 @@ def change_audio_mode(
             gr.Audio.update(visible=True),
             gr.Audio.update(visible=True),
             gr.Audio.update(visible=True),
+            gr.Slider.update(visible=True),
+            gr.Audio.update(visible=True),
+            gr.Button.update(visible=True),
             # TTS
             gr.Textbox.update(visible=False),
             gr.Dropdown.update(visible=False)
@@ -250,6 +237,7 @@ def change_audio_mode(
             gr.Audio.update(visible=False),
             gr.Audio.update(visible=False),
             gr.Audio.update(visible=False),
+                        gr.Audio.update(visible=False),
             # TTS
             gr.Textbox.update(visible=True),
             gr.Dropdown.update(visible=True)
@@ -267,6 +255,7 @@ def change_audio_mode(
             gr.Audio.update(visible=False),
             gr.Audio.update(visible=False),
             gr.Audio.update(visible=False),
+                        gr.Button.update(visible=False),
             # TTS
             gr.Textbox.update(visible=False),
             gr.Dropdown.update(visible=False)
@@ -357,7 +346,7 @@ if __name__ == '__main__':
                                     vc_upload = gr.Audio(label="Upload audio file", visible=True, interactive=True)
                                     # Youtube
                                     vc_download_audio = gr.Dropdown(label="Provider", choices=["Youtube"], allow_custom_value=False, visible=False, value="Youtube", info="Select provider (Default: Youtube)")
-                                    vc_link = gr.Textbox(label="Youtube URL", info="Example: https://www.youtube.com/watch?v=Nc0sB1Bmf-A", placeholder="https://www.youtube.com/watch?v=...")
+                                    vc_link = gr.Textbox(label="Youtube URL", visible=False, info="Example: https://www.youtube.com/watch?v=Nc0sB1Bmf-A", placeholder="https://www.youtube.com/watch?v=...")
                                     vc_split_model = gr.Dropdown(label="Splitter Model", choices=["htdemucs", "mdx_extra_q"], allow_custom_value=False, visible=False, value="htdemucs", info="Select the splitter model (Default: htdemucs)")
                                     vc_split = gr.Button("Split Audio", variant="primary", visible=False)
                                     vc_vocal_preview = gr.Audio(label="Vocal Preview", visible=False)
@@ -372,9 +361,8 @@ if __name__ == '__main__':
                                         maximum=2333,
                                         step=1,
                                         label="Speaker ID",
-                                        label="(Default: 0)",
+                                        info="(Default: 0)",
                                         value=0,
-                                        visible=False,
                                         interactive=True,
                                     )
                                     vc_transform0 = gr.Number(label="Transpose", value=0, info='Type "12" to change from male to female voice. Type "-12" to change female to male voice')
@@ -385,7 +373,7 @@ if __name__ == '__main__':
                                         value="pm",
                                         interactive=True,
                                     )
-                                    file_index = gr.Slider(
+                                    index_rate1 = gr.Slider(
                                         minimum=0,
                                         maximum=1,
                                         label="Retrieval feature ratio",
@@ -428,9 +416,9 @@ if __name__ == '__main__':
                                         step=0.01,
                                         interactive=True,
                                     )
+                                with gr.Column():
                                     vc_output = gr.Audio(label="Output Audio", interactive=False)
                                     vc_submit = gr.Button("Convert", variant="primary")
-                                with gr.Column():
                                     vc_volume = gr.Slider(
                                         minimum=0,
                                         maximum=10,
@@ -438,26 +426,18 @@ if __name__ == '__main__':
                                         value=4,
                                         interactive=True,
                                         step=1,
-                                        info="Adjust vocal volume (Default: 4}"
+                                        info="Adjust vocal volume (Default: 4}",
+                                        visible=False
                                     )
-                                    vc_combined_output = gr.Audio(label="Output Combined Audio")
-                                    vc_combine =  gr.Button("Combine",variant="primary")
+                                    vc_combined_output = gr.Audio(label="Output Combined Audio", visible=False)
+                                    vc_combine =  gr.Button("Combine",variant="primary", visible=False)
                         vc_submit.click(
                             fn=vc_fn, 
                             inputs=[
-                                # Gradio
                                 vc_input, 
                                 vc_upload,
-                                vc_download_audio,
-                                vc_link,
-                                vc_split_model,
-                                vc_split,
-                                vc_vocal_preview,
-                                vc_inst_preview,
-                                vc_audio_preview,
                                 tts_text,
                                 tts_voice,
-                                # Function
                                 spk_item,
                                 vc_transform0,
                                 f0method0,
@@ -472,7 +452,7 @@ if __name__ == '__main__':
                         vc_split.click(fn=cut_vocal_and_inst, inputs=[vc_link, vc_download_audio, vc_split_model], outputs=[vc_vocal_preview, vc_inst_preview, vc_audio_preview, vc_input])
                         vc_combine.click(fn=combine_vocal_and_inst, inputs=[vc_output, vc_volume, vc_split_model], outputs=[vc_combined_output])
                         vc_audio_mode.change(
-                            fn=change_to_upload_mode,
+                            fn=change_audio_mode,
                             inputs=[vc_audio_mode],
                             outputs=[
                                 vc_input, 
@@ -484,6 +464,9 @@ if __name__ == '__main__':
                                 vc_vocal_preview,
                                 vc_inst_preview,
                                 vc_audio_preview,
+                                vc_volume,
+                                vc_combined_output,
+                                vc_combine,
                                 tts_text,
                                 tts_voice
                             ]
