@@ -16,5 +16,5 @@ Original Repository: [Retrieval-based-Voice-Conversion-WebUI](https://github.com
 
 <div align="center">
 
-[![GitHub](https://img.shields.io/github/license/arkandash/rvc-inference)](https://github.com/ArkanDash/rvc-inference/blob/master/LICENCE)
+[![GitHub](https://img.shields.io/github/license/arkandash/Multi-Model-RVC-Inference)](https://github.com/ArkanDash/Multi-Model-RVC-Inference/blob/master/LICENSE)
 </div>
