@@ -466,7 +466,7 @@ if __name__ == '__main__':
                         vc_split.click(
                             fn=cut_vocal_and_inst, 
                             inputs=[vc_link, vc_download_audio, vc_split_model], 
-                            outputs=[vc_vocal_preview, vc_inst_preview, vc_audio_preview]
+                            outputs=[vc_vocal_preview, vc_inst_preview, vc_audio_preview, vc_input]
                         )
                         vc_combine.click(
                             fn=combine_vocal_and_inst,
