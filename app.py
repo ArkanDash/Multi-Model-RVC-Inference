@@ -35,8 +35,8 @@ def create_vc_fn(tgt_sr, net_g, vc, if_f0, file_index):
         vc_upload,
         tts_text,
         tts_voice,
+        spk_item,
         f0_up_key,
-        vc_transform,
         f0_method,
         index_rate,
         filter_radius,
@@ -68,7 +68,7 @@ def create_vc_fn(tgt_sr, net_g, vc, if_f0, file_index):
             audio_opt = vc.pipeline(
                 hubert_model,
                 net_g,
-                vc_transform,
+                spk_item,
                 audio,
                 vc_input,
                 times,
