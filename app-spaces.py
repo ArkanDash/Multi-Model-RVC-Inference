@@ -31,6 +31,7 @@ limitation = os.getenv("SYSTEM") == "spaces"
 
 def create_vc_fn(tgt_sr, net_g, vc, if_f0, file_index):
     def vc_fn(
+        vc_audio_mode,
         vc_input, 
         vc_upload,
         tts_text,
@@ -445,6 +446,7 @@ if __name__ == '__main__':
                         vc_convert.click(
                             fn=vc_fn, 
                             inputs=[
+                                vc_audio_mode,
                                 vc_input, 
                                 vc_upload,
                                 tts_text,
