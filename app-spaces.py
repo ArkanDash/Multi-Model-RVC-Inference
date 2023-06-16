@@ -204,6 +204,8 @@ def change_audio_mode(vc_audio_mode):
             gr.Audio.update(visible=False),
             gr.Audio.update(visible=False),
             gr.Slider.update(visible=False),
+            gr.Audio.update(visible=False),
+            gr.Button.update(visible=False),
             # TTS
             gr.Textbox.update(visible=False),
             gr.Dropdown.update(visible=False)
@@ -241,7 +243,9 @@ def change_audio_mode(vc_audio_mode):
             gr.Audio.update(visible=False),
             gr.Audio.update(visible=False),
             gr.Audio.update(visible=False),
-                        gr.Audio.update(visible=False),
+            gr.Slider.update(visible=False),
+            gr.Audio.update(visible=False),
+            gr.Button.update(visible=False),
             # TTS
             gr.Textbox.update(visible=True),
             gr.Dropdown.update(visible=True)
@@ -259,7 +263,9 @@ def change_audio_mode(vc_audio_mode):
             gr.Audio.update(visible=False),
             gr.Audio.update(visible=False),
             gr.Audio.update(visible=False),
-                        gr.Button.update(visible=False),
+            gr.Slider.update(visible=False),
+            gr.Audio.update(visible=False),
+            gr.Button.update(visible=False),
             # TTS
             gr.Textbox.update(visible=False),
             gr.Dropdown.update(visible=False)
