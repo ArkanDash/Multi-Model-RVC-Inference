@@ -67,6 +67,7 @@ def create_vc_fn(tgt_sr, net_g, vc, if_f0, file_index):
                     return "You need to enter text and select a voice", None
                 asyncio.run(edge_tts.Communicate(tts_text, "-".join(tts_voice.split('-')[:-1])).save("tts.mp3"))
                 audio, sr = librosa.load("tts.mp3", sr=16000, mono=True)
+                vc_input = "tts.mp3"
             times = [0, 0, 0]
             f0_up_key = int(f0_up_key)
             audio_opt = vc.pipeline(
