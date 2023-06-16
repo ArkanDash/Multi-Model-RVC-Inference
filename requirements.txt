@@ -4,7 +4,6 @@ httpx==0.23.0
 fairseq==0.12.2
 gradio
 ffmpeg
-ffmpeg-python
 praat-parselmouth
 pyworld
 numpy==1.23.5

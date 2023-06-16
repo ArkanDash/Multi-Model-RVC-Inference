@@ -27,6 +27,7 @@ from vc_infer_pipeline import VC
 from config import Config
 config = Config()
 logging.getLogger("numba").setLevel(logging.WARNING)
+limitation = os.getenv("SYSTEM") == "spaces"
 
 def create_vc_fn(tgt_sr, net_g, vc, if_f0, file_index):
     def vc_fn(
@@ -51,12 +52,16 @@ def create_vc_fn(tgt_sr, net_g, vc, if_f0, file_index):
                     return "You need to upload an audio", None
                 sampling_rate, audio = vc_upload
                 duration = audio.shape[0] / sampling_rate
+                if duration > 20 and limitation:
+                    return "Please upload an audio file that is less than 20 seconds. If you need to generate a longer audio file, please use Colab.", None
                 audio = (audio / np.iinfo(audio.dtype).max).astype(np.float32)
                 if len(audio.shape) > 1:
                     audio = librosa.to_mono(audio.transpose(1, 0))
                 if sampling_rate != 16000:
                     audio = librosa.resample(audio, orig_sr=sampling_rate, target_sr=16000)
             elif vc_audio_mode == "TTS Audio":
+                if len(tts_text) > 100 and limitation:
+                    return "Text is too long", None
                 if tts_text is None or tts_voice is None:
                     return "You need to enter text and select a voice", None
                 asyncio.run(edge_tts.Communicate(tts_text, "-".join(tts_voice.split('-')[:-1])).save("tts.mp3"))
@@ -314,7 +319,6 @@ if __name__ == '__main__':
     with gr.Blocks() as app:
         gr.Markdown(
             "# <center> Multi Model RVC Inference\n"
-            "### <center> Support v2 Model\n"
             "#### From [Retrieval-based-Voice-Conversion](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI)\n"
             "[![Original Repo](https://badgen.net/badge/icon/github?icon=github&label=Original%20Repo)](https://github.com/ArkanDash/Multi-Model-RVC-Inference)"
         )
@@ -340,7 +344,7 @@ if __name__ == '__main__':
                                 )
                             with gr.Row():
                                 with gr.Column():
-                                    vc_audio_mode = gr.Dropdown(label="Input voice", choices=["Input path", "Upload audio", "Youtube", "TTS Audio"], allow_custom_value=False, value="Upload audio")
+                                    vc_audio_mode = gr.Dropdown(label="Input voice", choices=["Upload audio", "TTS Audio"], allow_custom_value=False, value="Upload audio")
                                     # Input and Upload
                                     vc_input = gr.Textbox(label="Input audio path", visible=False)
                                     vc_upload = gr.Audio(label="Upload audio file", visible=True, interactive=True)
@@ -368,8 +372,8 @@ if __name__ == '__main__':
                                     vc_transform0 = gr.Number(label="Transpose", value=0, info='Type "12" to change from male to female voice. Type "-12" to change female to male voice')
                                     f0method0 = gr.Radio(
                                         label="Pitch extraction algorithm",
-                                        info="PM is fast, Harvest is good but extremely slow, and Crepe effect is good but requires GPU (Default: PM)",
-                                        choices=["pm", "harvest", "crepe"],
+                                        info="PM is fast, Harvest is good but extremely slow (Default: PM)",
+                                        choices=["pm", "harvest"],
                                         value="pm",
                                         interactive=True,
                                     )
