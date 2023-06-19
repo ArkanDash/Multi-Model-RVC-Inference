@@ -320,7 +320,7 @@ if __name__ == '__main__':
             else:
                 net_g = net_g.float()
             vc = VC(tgt_sr, config)
-            print(f"Model loaded: {model_name}")
+            print(f"Model loaded: {model_name} ({model_version} Model)")
             models.append((model_name, model_title, model_author, model_cover, nodel_version, create_vc_fn(tgt_sr, net_g, vc, if_f0, model_index)))
         categories.append([category_title, category_folder, description, models])
     with gr.Blocks() as app:
