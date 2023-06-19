@@ -43,3 +43,4 @@ onnxruntime-gpu
 torchcrepe==0.0.20
 edge_tts
 yt_dlp
+demucs
