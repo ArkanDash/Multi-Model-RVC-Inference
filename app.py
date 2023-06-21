@@ -308,14 +308,15 @@ if __name__ == '__main__':
         models = []
         with open(f"weights/{category_folder}/model_info.json", "r", encoding="utf-8") as f:
             models_info = json.load(f)
-        for model_name, info in models_info.items():
+        for character_name, info in models_info.items():
             if not info['enable']:
                 continue
-            model_title = info['model_path']
+            model_title = info['title']
+            model_name = info['model_path']
             model_author = info.get("author", None)
-            model_cover = f"weights/{category_folder}/{model_name}/{info['cover']}"
-            model_index = f"weights/{category_folder}/{model_name}/{info['feature_retrieval_library']}"
-            cpt = torch.load(f"weights/{category_folder}/{model_name}/{model_name}", map_location="cpu")
+            model_cover = f"weights/{category_folder}/{character_name}/{info['cover']}"
+            model_index = f"weights/{category_folder}/{character_name}/{info['feature_retrieval_library']}"
+            cpt = torch.load(f"weights/{category_folder}/{character_name}/{model_name}", map_location="cpu")
             tgt_sr = cpt["config"][-1]
             cpt["config"][-3] = cpt["weight"]["emb_g.weight"].shape[0]  # n_spk
             if_f0 = cpt.get("f0", 1)
@@ -340,8 +341,8 @@ if __name__ == '__main__':
             else:
                 net_g = net_g.float()
             vc = VC(tgt_sr, config)
-            print(f"Model loaded: {model_name} ({model_version} Model)")
-            models.append((model_name, model_title, model_author, model_cover, model_version, create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, model_index)))
+            print(f"Model loaded: {character_name} ({model_version} Model)")
+            models.append((character_name, model_title, model_author, model_cover, model_version, create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, model_index)))
         categories.append([category_title, category_folder, description, models])
     with gr.Blocks() as app:
         gr.Markdown(
