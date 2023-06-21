@@ -16,3 +16,7 @@ tensorboard
 tensorboardX
 torchcrepe
 onnxruntime
+ffmpeg
+demucs
+edge-tts
+yt_dlp
