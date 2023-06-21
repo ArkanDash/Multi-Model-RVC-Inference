@@ -381,4 +381,5 @@ monotonic_align/core.c
 
 .idea
 infer-web.py
+infer.py
 app-old.py

@@ -27,8 +27,21 @@ from vc_infer_pipeline import VC
 from config import Config
 config = Config()
 logging.getLogger("numba").setLevel(logging.WARNING)
+limitation = os.getenv("SYSTEM") == "spaces"
 
-def create_vc_fn(tgt_sr, net_g, vc, if_f0, file_index):
+audio_mode = []
+f0method_mode = []
+f0method_info = ""
+if limitation is True:
+    audio_mode = ["Upload audio", "TTS Audio"]
+    f0method_mode = ["pm", "harvest"]
+    f0method_info = "PM is fast, Harvest is good but extremely slow. (Default: PM)"
+else:
+    audio_mode = ["Input path", "Upload audio", "Youtube", "TTS Audio"]
+    f0method_mode = ["pm", "harvest", "crepe"]
+    f0method_info = "PM is fast, Harvest is good but extremely slow, and Crepe effect is good but requires GPU (Default: PM)"
+
+def create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, file_index):
     def vc_fn(
         vc_audio_mode,
         vc_input, 
@@ -37,6 +50,7 @@ def create_vc_fn(tgt_sr, net_g, vc, if_f0, file_index):
         tts_voice,
         f0_up_key,
         f0_method,
+        crepe_hop_length,
         index_rate,
         filter_radius,
         resample_sr,
@@ -51,16 +65,19 @@ def create_vc_fn(tgt_sr, net_g, vc, if_f0, file_index):
                     return "You need to upload an audio", None
                 sampling_rate, audio = vc_upload
                 duration = audio.shape[0] / sampling_rate
+                if duration > 20 and limitation:
+                    return "Please upload an audio file that is less than 20 seconds. If you need to generate a longer audio file, please use Colab.", None
                 audio = (audio / np.iinfo(audio.dtype).max).astype(np.float32)
                 if len(audio.shape) > 1:
                     audio = librosa.to_mono(audio.transpose(1, 0))
                 if sampling_rate != 16000:
                     audio = librosa.resample(audio, orig_sr=sampling_rate, target_sr=16000)
             elif vc_audio_mode == "TTS Audio":
+                if len(tts_text) > 100 and limitation:
+                    return "Text is too long", None
                 if tts_text is None or tts_voice is None:
                     return "You need to enter text and select a voice", None
                 asyncio.run(edge_tts.Communicate(tts_text, "-".join(tts_voice.split('-')[:-1])).save("tts.mp3"))
-                audio, sr = librosa.load("tts.mp3", sr=16000, mono=True)
                 vc_input = "tts.mp3"
             times = [0, 0, 0]
             f0_up_key = int(f0_up_key)
@@ -74,6 +91,7 @@ def create_vc_fn(tgt_sr, net_g, vc, if_f0, file_index):
                 f0_up_key,
                 f0_method,
                 file_index,
+                # file_big_npy,
                 index_rate,
                 if_f0,
                 filter_radius,
@@ -82,6 +100,7 @@ def create_vc_fn(tgt_sr, net_g, vc, if_f0, file_index):
                 rms_mix_rate,
                 version,
                 protect,
+                crepe_hop_length,
                 f0_file=None,
             )
             info = f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}]: npy: {times[0]}, f0: {times[1]}s, infer: {times[2]}s"
@@ -89,7 +108,7 @@ def create_vc_fn(tgt_sr, net_g, vc, if_f0, file_index):
             return info, (tgt_sr, audio_opt)
         except:
             info = traceback.format_exc()
-            print(info)
+            print(f"{model_title} - {info}")
             return info, (None, None)
     return vc_fn
 
@@ -164,6 +183,12 @@ def load_hubert():
     else:
         hubert_model = hubert_model.float()
     hubert_model.eval()
+
+def crepe_hop_length_option(f0method):
+    if f0method == "crepe":
+        return gr.Slider.update(visible=True)
+    else:
+        return gr.Slider.update(visible=False)
 
 def change_audio_mode(vc_audio_mode):
     if vc_audio_mode == "Input path":
@@ -286,11 +311,11 @@ if __name__ == '__main__':
         for model_name, info in models_info.items():
             if not info['enable']:
                 continue
-            model_title = info['title']
+            model_title = info['model_path']
             model_author = info.get("author", None)
             model_cover = f"weights/{category_folder}/{model_name}/{info['cover']}"
             model_index = f"weights/{category_folder}/{model_name}/{info['feature_retrieval_library']}"
-            cpt = torch.load(f"weights/{category_folder}/{model_name}/{model_name}.pth", map_location="cpu")
+            cpt = torch.load(f"weights/{category_folder}/{model_name}/{model_name}", map_location="cpu")
             tgt_sr = cpt["config"][-1]
             cpt["config"][-3] = cpt["weight"]["emb_g.weight"].shape[0]  # n_spk
             if_f0 = cpt.get("f0", 1)
@@ -316,7 +341,7 @@ if __name__ == '__main__':
                 net_g = net_g.float()
             vc = VC(tgt_sr, config)
             print(f"Model loaded: {model_name} ({model_version} Model)")
-            models.append((model_name, model_title, model_author, model_cover, model_version, create_vc_fn(tgt_sr, net_g, vc, if_f0, model_index)))
+            models.append((model_name, model_title, model_author, model_cover, model_version, create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, model_index)))
         categories.append([category_title, category_folder, description, models])
     with gr.Blocks() as app:
         gr.Markdown(
@@ -347,7 +372,7 @@ if __name__ == '__main__':
                                 )
                             with gr.Row():
                                 with gr.Column():
-                                    vc_audio_mode = gr.Dropdown(label="Input voice", choices=["Input path", "Upload audio", "Youtube", "TTS Audio"], allow_custom_value=False, value="Upload audio")
+                                    vc_audio_mode = gr.Dropdown(label="Input voice", choices=audio_mode, allow_custom_value=False, value="Upload audio")
                                     # Input and Upload
                                     vc_input = gr.Textbox(label="Input audio path", visible=False)
                                     vc_upload = gr.Audio(label="Upload audio file", visible=True, interactive=True)
@@ -366,10 +391,18 @@ if __name__ == '__main__':
                                     vc_transform0 = gr.Number(label="Transpose", value=0, info='Type "12" to change from male to female voice. Type "-12" to change female to male voice')
                                     f0method0 = gr.Radio(
                                         label="Pitch extraction algorithm",
-                                        info="PM is fast, Harvest is good but extremely slow, and Crepe effect is good but requires GPU (Default: PM)",
-                                        choices=["pm", "harvest", "crepe"],
+                                        info=f0method_info,
+                                        choices=f0method_mode,
                                         value="pm",
-                                        interactive=True,
+                                        interactive=True
+                                    )
+                                    crepe_hop_length = gr.Slider(
+                                        minimum=1,
+                                        maximum=512,
+                                        step=1,
+                                        label="Crepe Hop Length",
+                                        value=160,
+                                        interactive=True
                                     )
                                     index_rate1 = gr.Slider(
                                         minimum=0,
@@ -414,6 +447,11 @@ if __name__ == '__main__':
                                         step=0.01,
                                         interactive=True,
                                     )
+                                    f0method0.change(
+                                        fn=crepe_hop_length_option,
+                                        inputs=[f0method0.value],
+                                        outputs=[crepe_hop_length_option]
+                                    )
                                 with gr.Column():
                                     vc_log = gr.Textbox(label="Output Information", interactive=False)
                                     vc_output = gr.Audio(label="Output Audio", interactive=False)
@@ -440,6 +478,7 @@ if __name__ == '__main__':
                                 tts_voice,
                                 vc_transform0,
                                 f0method0,
+                                crepe_hop_length,
                                 index_rate1,
                                 filter_radius0,
                                 resample_sr0,

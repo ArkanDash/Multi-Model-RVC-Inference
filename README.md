@@ -2,17 +2,43 @@
 
 # Multi Model RVC Inference
 
-## Now support model v2
 </div>
+### Information
+This Inference Pipeline is from Mangio-Fork
+Support V1 Model and V2 Model
 
+Original Repository: [Retrieval-based-Voice-Conversion-WebUI](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI)
+Mangio-Fork Repository: [RVC-Mangio-Fork-WebUI](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI)
+
+#### Features
 - Youtube Audio Downloader
-- Demucs (Voice Splitter)
+- Demucs (Voice Splitter) [Internet Required] 
 - TTS Support
 - HuggingFace Spaces Inference [FREE TIER CPU]
     - Remove Youtube & Input Path
     - Remove Crepe Support due to gpu requirement
 
-Original Repository: [Retrieval-based-Voice-Conversion-WebUI](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI)
+#### Plans
+- New Multi RVC Inference ❗
+- Model Downloader
+
+### Installation
+[Download Hubert Model](https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/hubert_base.pt)
+
+Install Requirement
+```bash
+pip install -r requirements.txt
+```
+
+Run WebUI
+```bash
+python app.py
+```
+
+Share gradio
+```bash
+python app.py --colab
+```
 
 <div align="center">
 
