@@ -104,11 +104,11 @@ def create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, file_index):
                 f0_file=None,
             )
             info = f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}]: npy: {times[0]}, f0: {times[1]}s, infer: {times[2]}s"
-            print(info)
+            print(f"{model_title} | {info}")
             return info, (tgt_sr, audio_opt)
         except:
             info = traceback.format_exc()
-            print(f"{model_title} - {info}")
+            print(info)
             return info, (None, None)
     return vc_fn
 
@@ -332,7 +332,7 @@ if __name__ == '__main__':
                     net_g = SynthesizerTrnMs768NSFsid(*cpt["config"], is_half=config.is_half)
                 else:
                     net_g = SynthesizerTrnMs768NSFsid_nono(*cpt["config"])
-                model_version = "v2"
+                model_version = "V2"
             del net_g.enc_q
             print(net_g.load_state_dict(cpt["weight"], strict=False))
             net_g.eval().to(config.device)
@@ -341,8 +341,8 @@ if __name__ == '__main__':
             else:
                 net_g = net_g.float()
             vc = VC(tgt_sr, config)
-            print(f"Model loaded: {character_name} ({model_version} Model)")
-            models.append((character_name, model_title, model_author, model_cover, model_version, create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, model_index)))
+            print(f"Model loaded: {character_name} / {model_index} | ({model_version})")
+            models.append((character_name, model_title, model_author, model_cover, model_version, if_f0, create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, model_index)))
         categories.append([category_title, category_folder, description, models])
     with gr.Blocks() as app:
         gr.Markdown(
@@ -360,7 +360,7 @@ if __name__ == '__main__':
                         gr.Markdown("# <center> No Model Loaded.")
                         gr.Markdown("## <center> Please add model or fix your model path.")
                         continue
-                    for (name, title, author, cover, model_version, vc_fn) in models:
+                    for (name, title, author, cover, model_version, if_f0, vc_fn) in models:
                         with gr.TabItem(name):
                             with gr.Row():
                                 gr.Markdown(
@@ -403,6 +403,7 @@ if __name__ == '__main__':
                                         step=1,
                                         label="Crepe Hop Length",
                                         value=160,
+                                        visible=False,
                                         interactive=True
                                     )
                                     index_rate1 = gr.Slider(
@@ -444,14 +445,19 @@ if __name__ == '__main__':
                                         maximum=0.5,
                                         label="Voice Protection",
                                         info="Protect voiceless consonants and breath sounds to prevent artifacts such as tearing in electronic music. Set to 0.5 to disable. Decrease the value to increase protection, but it may reduce indexing accuracy",
-                                        value=0.35,
+                                        value=0.4,
                                         step=0.01,
                                         interactive=True,
                                     )
+                                    if if_f0 == 0:
+                                        protect0.update(
+                                            value=0.5,
+                                            visible=False
+                                        )
                                     f0method0.change(
                                         fn=crepe_hop_length_option,
-                                        inputs=[f0method0.value],
-                                        outputs=[crepe_hop_length_option]
+                                        inputs=[f0method0],
+                                        outputs=[crepe_hop_length]
                                     )
                                 with gr.Column():
                                     vc_log = gr.Textbox(label="Output Information", interactive=False)
