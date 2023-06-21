@@ -1,3 +1,6 @@
+wheel
+setuptools
+ffmpeg
 numba==0.56.4
 numpy==1.23.5
 scipy==1.9.3
@@ -13,7 +16,6 @@ tensorboard
 tensorboardX
 torchcrepe
 onnxruntime
-ffmpeg
 demucs
 edge-tts
 yt_dlp

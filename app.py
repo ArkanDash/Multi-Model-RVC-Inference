@@ -82,7 +82,6 @@ def create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, file_index):
                 vc_input = "tts.mp3"
             times = [0, 0, 0]
             f0_up_key = int(f0_up_key)
-            print(protect)
             audio_opt = vc.pipeline(
                 hubert_model,
                 net_g,
