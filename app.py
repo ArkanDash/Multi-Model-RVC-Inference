@@ -78,9 +78,11 @@ def create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, file_index):
                 if tts_text is None or tts_voice is None:
                     return "You need to enter text and select a voice", None
                 asyncio.run(edge_tts.Communicate(tts_text, "-".join(tts_voice.split('-')[:-1])).save("tts.mp3"))
+                audio, sr = librosa.load("tts.mp3", sr=16000, mono=True)
                 vc_input = "tts.mp3"
             times = [0, 0, 0]
             f0_up_key = int(f0_up_key)
+            print(protect)
             audio_opt = vc.pipeline(
                 hubert_model,
                 net_g,
@@ -341,8 +343,8 @@ if __name__ == '__main__':
             else:
                 net_g = net_g.float()
             vc = VC(tgt_sr, config)
-            print(f"Model loaded: {character_name} / {model_index} | ({model_version})")
-            models.append((character_name, model_title, model_author, model_cover, model_version, if_f0, create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, model_index)))
+            print(f"Model loaded: {character_name} / {info['feature_retrieval_library']} | ({model_version})")
+            models.append((character_name, model_title, model_author, model_cover, model_version, create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, model_index)))
         categories.append([category_title, category_folder, description, models])
     with gr.Blocks() as app:
         gr.Markdown(
@@ -360,7 +362,7 @@ if __name__ == '__main__':
                         gr.Markdown("# <center> No Model Loaded.")
                         gr.Markdown("## <center> Please add model or fix your model path.")
                         continue
-                    for (name, title, author, cover, model_version, if_f0, vc_fn) in models:
+                    for (name, title, author, cover, model_version, vc_fn) in models:
                         with gr.TabItem(name):
                             with gr.Row():
                                 gr.Markdown(
@@ -449,11 +451,15 @@ if __name__ == '__main__':
                                         step=0.01,
                                         interactive=True,
                                     )
-                                    if if_f0 == 0:
-                                        protect0.update(
-                                            value=0.5,
-                                            visible=False
-                                        )
+                                    protect0 = gr.Slider(
+                                        minimum=0,
+                                        maximum=0.5,
+                                        label="Voice Protection",
+                                        info="Protect voiceless consonants and breath sounds to prevent artifacts such as tearing in electronic music. Set to 0.5 to disable. Decrease the value to increase protection, but it may reduce indexing accuracy",
+                                        value=0.5,
+                                        step=0.01,
+                                        interactive=True,
+                                    )
                                     f0method0.change(
                                         fn=crepe_hop_length_option,
                                         inputs=[f0method0],
