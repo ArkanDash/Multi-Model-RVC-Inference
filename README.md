@@ -5,9 +5,9 @@
 </div>
 
 ### Information
-Only Support V1 Model
+Now Support V1 and V2 Model
 
-I suggest you to use [RVC-New](https://github.com/ArkanDash/Multi-Model-RVC-Inference/tree/rvc-new) to use both version of the model.
+Advanced RVC Inference [RVC-New](https://github.com/ArkanDash/Multi-Model-RVC-Inference/tree/rvc-new)
 
 Original Repository: [Retrieval-based-Voice-Conversion-WebUI](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI)
 
