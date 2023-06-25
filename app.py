@@ -17,7 +17,7 @@ import io
 import wave
 from datetime import datetime
 from fairseq import checkpoint_utils
-from libs.infer_pack.models import (
+from lib.infer_pack.models import (
     SynthesizerTrnMs256NSFsid,
     SynthesizerTrnMs256NSFsid_nono,
     SynthesizerTrnMs768NSFsid,
@@ -41,7 +41,7 @@ else:
     f0method_mode = ["pm", "harvest", "crepe"]
     f0method_info = "PM is fast, Harvest is good but extremely slow, and Crepe effect is good but requires GPU (Default: PM)"
 
-def create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, file_index):
+def create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, version, file_index):
     def vc_fn(
         vc_audio_mode,
         vc_input, 
@@ -111,7 +111,8 @@ def create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, file_index):
             return info, (None, None)
     return vc_fn
 
-def single_vc():
+def load_model():
+    categories = []
     with open("weights/folder_info.json", "r", encoding="utf-8") as f:
         folder_info = json.load(f)
     for category_name, category_info in folder_info.items():
@@ -157,8 +158,9 @@ def single_vc():
                 net_g = net_g.float()
             vc = VC(tgt_sr, config)
             print(f"Model loaded: {character_name} / {info['feature_retrieval_library']} | ({model_version})")
-            models.append((character_name, model_title, model_author, model_cover, model_version, create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, model_index)))
-        return categories.append([category_title, category_folder, description, models])
+            models.append((character_name, model_title, model_author, model_cover, model_version, create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, version, model_index)))
+        categories.append([category_title, category_folder, description, models])
+    return categories
 
 def cut_vocal_and_inst(url, audio_provider, split_model):
     if url != "":
@@ -336,7 +338,7 @@ def change_audio_mode(vc_audio_mode):
 
 if __name__ == '__main__':
     load_hubert()
-    categories = []
+    categories = load_model()
     tts_voice_list = asyncio.get_event_loop().run_until_complete(edge_tts.list_voices())
     voices = [f"{v['ShortName']}-{v['Gender']}" for v in tts_voice_list]
     with gr.Blocks() as app:
@@ -443,11 +445,6 @@ if __name__ == '__main__':
                                         value=0.5,
                                         step=0.01,
                                         interactive=True,
-                                    )
-                                    f0method0.change(
-                                        fn=crepe_hop_length_option,
-                                        inputs=[f0method0],
-                                        outputs=[crepe_hop_length]
                                     )
                                 with gr.Column():
                                     vc_log = gr.Textbox(label="Output Information", interactive=False)
