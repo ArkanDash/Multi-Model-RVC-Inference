@@ -17,7 +17,7 @@ import io
 import wave
 from datetime import datetime
 from fairseq import checkpoint_utils
-from infer_pack.models import (
+from libs.infer_pack.models import (
     SynthesizerTrnMs256NSFsid,
     SynthesizerTrnMs256NSFsid_nono,
     SynthesizerTrnMs768NSFsid,
@@ -50,7 +50,6 @@ def create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, file_index):
         tts_voice,
         f0_up_key,
         f0_method,
-        crepe_hop_length,
         index_rate,
         filter_radius,
         resample_sr,
@@ -101,7 +100,6 @@ def create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, file_index):
                 rms_mix_rate,
                 version,
                 protect,
-                crepe_hop_length,
                 f0_file=None,
             )
             info = f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}]: npy: {times[0]}, f0: {times[1]}s, infer: {times[2]}s"
@@ -112,6 +110,55 @@ def create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, file_index):
             print(info)
             return info, (None, None)
     return vc_fn
+
+def single_vc():
+    with open("weights/folder_info.json", "r", encoding="utf-8") as f:
+        folder_info = json.load(f)
+    for category_name, category_info in folder_info.items():
+        if not category_info['enable']:
+            continue
+        category_title = category_info['title']
+        category_folder = category_info['folder_path']
+        description = category_info['description']
+        models = []
+        with open(f"weights/{category_folder}/model_info.json", "r", encoding="utf-8") as f:
+            models_info = json.load(f)
+        for character_name, info in models_info.items():
+            if not info['enable']:
+                continue
+            model_title = info['title']
+            model_name = info['model_path']
+            model_author = info.get("author", None)
+            model_cover = f"weights/{category_folder}/{character_name}/{info['cover']}"
+            model_index = f"weights/{category_folder}/{character_name}/{info['feature_retrieval_library']}"
+            cpt = torch.load(f"weights/{category_folder}/{character_name}/{model_name}", map_location="cpu")
+            tgt_sr = cpt["config"][-1]
+            cpt["config"][-3] = cpt["weight"]["emb_g.weight"].shape[0]  # n_spk
+            if_f0 = cpt.get("f0", 1)
+            version = cpt.get("version", "v1")
+            if version == "v1":
+                if if_f0 == 1:
+                    net_g = SynthesizerTrnMs256NSFsid(*cpt["config"], is_half=config.is_half)
+                else:
+                    net_g = SynthesizerTrnMs256NSFsid_nono(*cpt["config"])
+                model_version = "V1"
+            elif version == "v2":
+                if if_f0 == 1:
+                    net_g = SynthesizerTrnMs768NSFsid(*cpt["config"], is_half=config.is_half)
+                else:
+                    net_g = SynthesizerTrnMs768NSFsid_nono(*cpt["config"])
+                model_version = "V2"
+            del net_g.enc_q
+            print(net_g.load_state_dict(cpt["weight"], strict=False))
+            net_g.eval().to(config.device)
+            if config.is_half:
+                net_g = net_g.half()
+            else:
+                net_g = net_g.float()
+            vc = VC(tgt_sr, config)
+            print(f"Model loaded: {character_name} / {info['feature_retrieval_library']} | ({model_version})")
+            models.append((character_name, model_title, model_author, model_cover, model_version, create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, model_index)))
+        return categories.append([category_title, category_folder, description, models])
 
 def cut_vocal_and_inst(url, audio_provider, split_model):
     if url != "":
@@ -184,12 +231,6 @@ def load_hubert():
     else:
         hubert_model = hubert_model.float()
     hubert_model.eval()
-
-def crepe_hop_length_option(f0method):
-    if f0method == "crepe":
-        return gr.Slider.update(visible=True)
-    else:
-        return gr.Slider.update(visible=False)
 
 def change_audio_mode(vc_audio_mode):
     if vc_audio_mode == "Input path":
@@ -298,53 +339,6 @@ if __name__ == '__main__':
     categories = []
     tts_voice_list = asyncio.get_event_loop().run_until_complete(edge_tts.list_voices())
     voices = [f"{v['ShortName']}-{v['Gender']}" for v in tts_voice_list]
-    with open("weights/folder_info.json", "r", encoding="utf-8") as f:
-        folder_info = json.load(f)
-    for category_name, category_info in folder_info.items():
-        if not category_info['enable']:
-            continue
-        category_title = category_info['title']
-        category_folder = category_info['folder_path']
-        description = category_info['description']
-        models = []
-        with open(f"weights/{category_folder}/model_info.json", "r", encoding="utf-8") as f:
-            models_info = json.load(f)
-        for character_name, info in models_info.items():
-            if not info['enable']:
-                continue
-            model_title = info['title']
-            model_name = info['model_path']
-            model_author = info.get("author", None)
-            model_cover = f"weights/{category_folder}/{character_name}/{info['cover']}"
-            model_index = f"weights/{category_folder}/{character_name}/{info['feature_retrieval_library']}"
-            cpt = torch.load(f"weights/{category_folder}/{character_name}/{model_name}", map_location="cpu")
-            tgt_sr = cpt["config"][-1]
-            cpt["config"][-3] = cpt["weight"]["emb_g.weight"].shape[0]  # n_spk
-            if_f0 = cpt.get("f0", 1)
-            version = cpt.get("version", "v1")
-            if version == "v1":
-                if if_f0 == 1:
-                    net_g = SynthesizerTrnMs256NSFsid(*cpt["config"], is_half=config.is_half)
-                else:
-                    net_g = SynthesizerTrnMs256NSFsid_nono(*cpt["config"])
-                model_version = "V1"
-            elif version == "v2":
-                if if_f0 == 1:
-                    net_g = SynthesizerTrnMs768NSFsid(*cpt["config"], is_half=config.is_half)
-                else:
-                    net_g = SynthesizerTrnMs768NSFsid_nono(*cpt["config"])
-                model_version = "V2"
-            del net_g.enc_q
-            print(net_g.load_state_dict(cpt["weight"], strict=False))
-            net_g.eval().to(config.device)
-            if config.is_half:
-                net_g = net_g.half()
-            else:
-                net_g = net_g.float()
-            vc = VC(tgt_sr, config)
-            print(f"Model loaded: {character_name} / {info['feature_retrieval_library']} | ({model_version})")
-            models.append((character_name, model_title, model_author, model_cover, model_version, create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, model_index)))
-        categories.append([category_title, category_folder, description, models])
     with gr.Blocks() as app:
         gr.Markdown(
             "# <center> Multi Model RVC Inference\n"
@@ -396,15 +390,6 @@ if __name__ == '__main__':
                                         info=f0method_info,
                                         choices=f0method_mode,
                                         value="pm",
-                                        interactive=True
-                                    )
-                                    crepe_hop_length = gr.Slider(
-                                        minimum=1,
-                                        maximum=512,
-                                        step=1,
-                                        label="Crepe Hop Length",
-                                        value=160,
-                                        visible=False,
                                         interactive=True
                                     )
                                     index_rate1 = gr.Slider(
@@ -490,7 +475,6 @@ if __name__ == '__main__':
                                 tts_voice,
                                 vc_transform0,
                                 f0method0,
-                                crepe_hop_length,
                                 index_rate1,
                                 filter_radius0,
                                 resample_sr0,

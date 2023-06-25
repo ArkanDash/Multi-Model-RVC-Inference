@@ -1,4 +1,4 @@
-from infer_pack.modules.F0Predictor.F0Predictor import F0Predictor
+from lib.infer_pack.modules.F0Predictor.F0Predictor import F0Predictor
 import pyworld
 import numpy as np
 

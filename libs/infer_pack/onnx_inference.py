@@ -33,19 +33,19 @@ class ContentVec:
 
 def get_f0_predictor(f0_predictor, hop_length, sampling_rate, **kargs):
     if f0_predictor == "pm":
-        from infer_pack.modules.F0Predictor.PMF0Predictor import PMF0Predictor
+        from lib.infer_pack.modules.F0Predictor.PMF0Predictor import PMF0Predictor
 
         f0_predictor_object = PMF0Predictor(
             hop_length=hop_length, sampling_rate=sampling_rate
         )
     elif f0_predictor == "harvest":
-        from infer_pack.modules.F0Predictor.HarvestF0Predictor import HarvestF0Predictor
+        from lib.infer_pack.modules.F0Predictor.HarvestF0Predictor import HarvestF0Predictor
 
         f0_predictor_object = HarvestF0Predictor(
             hop_length=hop_length, sampling_rate=sampling_rate
         )
     elif f0_predictor == "dio":
-        from infer_pack.modules.F0Predictor.DioF0Predictor import DioF0Predictor
+        from lib.infer_pack.modules.F0Predictor.DioF0Predictor import DioF0Predictor
 
         f0_predictor_object = DioF0Predictor(
             hop_length=hop_length, sampling_rate=sampling_rate
