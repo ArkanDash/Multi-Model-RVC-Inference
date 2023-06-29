@@ -2,13 +2,11 @@
 
 # Multi-Model RVC Inference
 
+[![GitHub](https://img.shields.io/github/license/arkandash/Multi-Model-RVC-Inference)](https://github.com/ArkanDash/Multi-Model-RVC-Inference/blob/master/LICENSE)
 </div>
 
 ### Information
 Now Support V1 and V2 Model
-
-Advanced RVC Inference [RVC-New](https://github.com/ArkanDash/Multi-Model-RVC-Inference/tree/rvc-new)
-
 Original Repository: [Retrieval-based-Voice-Conversion-WebUI](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI)
 
 #### Features
@@ -20,7 +18,7 @@ Original Repository: [Retrieval-based-Voice-Conversion-WebUI](https://github.com
     - Remove Crepe Support due to gpu requirement ✅
 
 #### Plans
-- Nothing
+- UVR
 
 ### Installation
 
@@ -37,8 +35,5 @@ pip install -r requirements.txt
 ```bash
 python app.py
 ```
-
-<div align="center">
-
-[![GitHub](https://img.shields.io/github/license/arkandash/Multi-Model-RVC-Inference)](https://github.com/ArkanDash/Multi-Model-RVC-Inference/blob/master/LICENSE)
-</div>
+# Other Inference
+[Simple RVC Inference](https://github.com/ArkanDash/rvc-simple-inference)

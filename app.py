@@ -108,7 +108,7 @@ def create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, version, file_index):
         except:
             info = traceback.format_exc()
             print(info)
-            return info, (None, None)
+            return info, None
     return vc_fn
 
 def load_model():
