@@ -398,8 +398,8 @@ if __name__ == '__main__':
                                         minimum=0,
                                         maximum=1,
                                         label="Retrieval feature ratio",
-                                        info="(Default: 0.6)",
-                                        value=0.6,
+                                        info="(Default: 0.7)",
+                                        value=0.7,
                                         interactive=True,
                                     )
                                     filter_radius0 = gr.Slider(
@@ -426,15 +426,6 @@ if __name__ == '__main__':
                                         label="Volume Envelope",
                                         info="Use the volume envelope of the input to replace or mix with the volume envelope of the output. The closer the ratio is to 1, the more the output envelope is used",
                                         value=1,
-                                        interactive=True,
-                                    )
-                                    protect0 = gr.Slider(
-                                        minimum=0,
-                                        maximum=0.5,
-                                        label="Voice Protection",
-                                        info="Protect voiceless consonants and breath sounds to prevent artifacts such as tearing in electronic music. Set to 0.5 to disable. Decrease the value to increase protection, but it may reduce indexing accuracy",
-                                        value=0.4,
-                                        step=0.01,
                                         interactive=True,
                                     )
                                     protect0 = gr.Slider(
