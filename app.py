@@ -168,25 +168,17 @@ def cut_vocal_and_inst(url, audio_provider, split_model):
             os.mkdir("dl_audio")
         if audio_provider == "Youtube":
             ydl_opts = {
-            'format': 'bestaudio/best',
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'wav',
-            }],
-            "outtmpl": 'dl_audio/youtube_audio',
+                'noplaylist': True,
+                'format': 'bestaudio/best',
+                'postprocessors': [{
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'wav',
+                }],
+                "outtmpl": 'dl_audio/youtube_audio',
             }
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
             audio_path = "dl_audio/youtube_audio.wav"
-        else:
-            # Spotify doesnt work.
-            # Need to find other solution soon.
-            ''' 
-            command = f"spotdl download {url} --output dl_audio/.wav"
-            result = subprocess.run(command.split(), stdout=subprocess.PIPE)
-            print(result.stdout.decode())
-            audio_path = "dl_audio/spotify_audio.wav"
-            '''
         if split_model == "htdemucs":
             command = f"demucs --two-stems=vocals {audio_path} -o output"
             result = subprocess.run(command.split(), stdout=subprocess.PIPE)
@@ -239,6 +231,7 @@ def change_audio_mode(vc_audio_mode):
         return (
             # Input & Upload
             gr.Textbox.update(visible=True),
+            gr.Checkbox.update(visible=False),
             gr.Audio.update(visible=False),
             # Youtube
             gr.Dropdown.update(visible=False),
@@ -259,6 +252,7 @@ def change_audio_mode(vc_audio_mode):
         return (
             # Input & Upload
             gr.Textbox.update(visible=False),
+            gr.Checkbox.update(visible=True),
             gr.Audio.update(visible=True),
             # Youtube
             gr.Dropdown.update(visible=False),
@@ -279,6 +273,7 @@ def change_audio_mode(vc_audio_mode):
         return (
             # Input & Upload
             gr.Textbox.update(visible=False),
+            gr.Checkbox.update(visible=False),
             gr.Audio.update(visible=False),
             # Youtube
             gr.Dropdown.update(visible=True),
@@ -299,6 +294,7 @@ def change_audio_mode(vc_audio_mode):
         return (
             # Input & Upload
             gr.Textbox.update(visible=False),
+            gr.Checkbox.update(visible=False),
             gr.Audio.update(visible=False),
             # Youtube
             gr.Dropdown.update(visible=False),
@@ -319,6 +315,7 @@ def change_audio_mode(vc_audio_mode):
         return (
             # Input & Upload
             gr.Textbox.update(visible=False),
+            gr.Checkbox.update(visible=True),
             gr.Audio.update(visible=True),
             # Youtube
             gr.Dropdown.update(visible=False),
@@ -336,6 +333,12 @@ def change_audio_mode(vc_audio_mode):
             gr.Dropdown.update(visible=False)
         )
 
+def use_microphone(microphone):
+    if microphone == True:
+        return gr.Audio.update(source="microphone")
+    else:
+        return gr.Audio.update(source="upload")
+
 if __name__ == '__main__':
     load_hubert()
     categories = load_model()
@@ -343,10 +346,10 @@ if __name__ == '__main__':
     voices = [f"{v['ShortName']}-{v['Gender']}" for v in tts_voice_list]
     with gr.Blocks() as app:
         gr.Markdown(
-            "# <center> Multi Model RVC Inference\n"
-            "### <center> Support v2 Model\n"
-            "#### From [Retrieval-based-Voice-Conversion](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI)\n"
-            "[![Original Repo](https://badgen.net/badge/icon/github?icon=github&label=Original%20Repo)](https://github.com/ArkanDash/Multi-Model-RVC-Inference)"
+            "<div align='center'>\n\n"+
+            "# Multi Model RVC Inference\n\n"+
+            "[![Repository](https://img.shields.io/badge/Github-Multi%20Model%20RVC%20Inference-blue?style=for-the-badge&logo=github)](https://github.com/ArkanDash/Multi-Model-RVC-Inference)\n\n"+
+            "</div>"
         )
         for (folder_title, folder, description, models) in categories:
             with gr.TabItem(folder_title):
@@ -371,9 +374,11 @@ if __name__ == '__main__':
                             with gr.Row():
                                 with gr.Column():
                                     vc_audio_mode = gr.Dropdown(label="Input voice", choices=audio_mode, allow_custom_value=False, value="Upload audio")
-                                    # Input and Upload
+                                    # Input
                                     vc_input = gr.Textbox(label="Input audio path", visible=False)
-                                    vc_upload = gr.Audio(label="Upload audio file", visible=True, interactive=True)
+                                    # Upload
+                                    vc_microphone_mode = gr.Checkbox(label="Use Microphone", value=False, visible=True, interactive=True)
+                                    vc_upload = gr.Audio(label="Upload audio file", source="upload", visible=True, interactive=True)
                                     # Youtube
                                     vc_download_audio = gr.Dropdown(label="Provider", choices=["Youtube"], allow_custom_value=False, visible=False, value="Youtube", info="Select provider (Default: Youtube)")
                                     vc_link = gr.Textbox(label="Youtube URL", visible=False, info="Example: https://www.youtube.com/watch?v=Nc0sB1Bmf-A", placeholder="https://www.youtube.com/watch?v=...")
@@ -457,7 +462,7 @@ if __name__ == '__main__':
                             fn=vc_fn, 
                             inputs=[
                                 vc_audio_mode,
-                                vc_input, 
+                                vc_input,
                                 vc_upload,
                                 tts_text,
                                 tts_voice,
@@ -481,11 +486,17 @@ if __name__ == '__main__':
                             inputs=[vc_output, vc_volume, vc_split_model],
                             outputs=[vc_combined_output]
                         )
+                        vc_microphone_mode.change(
+                            fn=use_microphone,
+                            inputs=vc_microphone_mode,
+                            outputs=vc_upload
+                        )
                         vc_audio_mode.change(
                             fn=change_audio_mode,
                             inputs=[vc_audio_mode],
                             outputs=[
-                                vc_input, 
+                                vc_input,
+                                vc_microphone_mode,
                                 vc_upload,
                                 vc_download_audio,
                                 vc_link,
