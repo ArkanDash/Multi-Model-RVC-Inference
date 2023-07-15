@@ -29,9 +29,11 @@ pip install torch torchvision torchaudio
 pip install -r requirements.txt
 ```
 
-2. Download [Hubert Model](https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/hubert_base.pt)
+2. Install [ffmpeg](https://ffmpeg.org/)
 
-3. Run WebUI <br />
+3. Download [Hubert Model](https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/hubert_base.pt)
+
+4. Run WebUI <br />
 ```bash
 python app.py
 ```

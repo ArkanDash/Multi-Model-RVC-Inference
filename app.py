@@ -41,7 +41,7 @@ else:
     f0method_mode = ["pm", "harvest", "crepe"]
     f0method_info = "PM is fast, Harvest is good but extremely slow, and Crepe effect is good but requires GPU (Default: PM)"
 
-def create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, version, file_index):
+def create_vc_fn(model_name, tgt_sr, net_g, vc, if_f0, version, file_index):
     def vc_fn(
         vc_audio_mode,
         vc_input, 
@@ -57,6 +57,7 @@ def create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, version, file_index):
         protect,
     ):
         try:
+            print(f"Converting using {model_name}...")
             if vc_audio_mode == "Input path" or "Youtube" and vc_input != "":
                 audio, sr = librosa.load(vc_input, sr=16000, mono=True)
             elif vc_audio_mode == "Upload audio":
@@ -103,7 +104,7 @@ def create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, version, file_index):
                 f0_file=None,
             )
             info = f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}]: npy: {times[0]}, f0: {times[1]}s, infer: {times[2]}s"
-            print(f"{model_title} | {info}")
+            print(f"{model_name} | {info}")
             return info, (tgt_sr, audio_opt)
         except:
             info = traceback.format_exc()
@@ -158,7 +159,7 @@ def load_model():
                 net_g = net_g.float()
             vc = VC(tgt_sr, config)
             print(f"Model loaded: {character_name} / {info['feature_retrieval_library']} | ({model_version})")
-            models.append((character_name, model_title, model_author, model_cover, model_version, create_vc_fn(model_title, tgt_sr, net_g, vc, if_f0, version, model_index)))
+            models.append((character_name, model_title, model_author, model_cover, model_version, create_vc_fn(model_name, tgt_sr, net_g, vc, if_f0, version, model_index)))
         categories.append([category_title, category_folder, description, models])
     return categories
 
