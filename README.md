@@ -17,9 +17,6 @@ Now Support V1 and V2 Model <br />
     - Remove Youtube & Input Path ✅
     - Remove Crepe Support due to gpu requirement ✅
 
-#### Plans
-- UVR
-
 ### Installation
 
 1. Install Requirement <br />
