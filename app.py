@@ -34,12 +34,12 @@ f0method_mode = []
 f0method_info = ""
 if limitation is True:
     audio_mode = ["Upload audio", "TTS Audio"]
-    f0method_mode = ["pm", "harvest"]
-    f0method_info = "PM is fast, Harvest is good but extremely slow. (Default: PM)"
+    f0method_mode = ["pm", "harvest", "rmvpe"]
+    f0method_info = "PM is fast, Harvest is good but extremely slow, Rvmpe is alternative to harvest (might be better). (Default: PM)"
 else:
     audio_mode = ["Input path", "Upload audio", "Youtube", "TTS Audio"]
-    f0method_mode = ["pm", "harvest", "crepe"]
-    f0method_info = "PM is fast, Harvest is good but extremely slow, and Crepe effect is good but requires GPU (Default: PM)"
+    f0method_mode = ["pm", "harvest", "rmvpe", "crepe"]
+    f0method_info = "PM is fast, Harvest is good but extremely slow, Rvmpe is alternative to harvest (might be better), and Crepe effect is good but requires GPU (Default: PM)"
 
 def create_vc_fn(model_name, tgt_sr, net_g, vc, if_f0, version, file_index):
     def vc_fn(
