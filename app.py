@@ -35,11 +35,11 @@ f0method_info = ""
 
 if limitation is True:
     audio_mode = ["Upload audio", "TTS Audio"]
-    f0method_mode = ["pm", "harvest", "rmvpe"]
+    f0method_mode = ["pm", "harvest"]
     f0method_info = "PM is fast, Harvest is good but extremely slow, Rvmpe is alternative to harvest (might be better). (Default: PM)"
 else:
     audio_mode = ["Input path", "Upload audio", "Youtube", "TTS Audio"]
-    f0method_mode = ["pm", "harvest", "rmvpe", "crepe"]
+    f0method_mode = ["pm", "harvest", "crepe"]
     f0method_info = "PM is fast, Harvest is good but extremely slow, Rvmpe is alternative to harvest (might be better), and Crepe effect is good but requires GPU (Default: PM)"
 
 if os.path.isfile("rmvpe.pt"):
