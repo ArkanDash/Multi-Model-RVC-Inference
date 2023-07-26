@@ -32,6 +32,7 @@ limitation = os.getenv("SYSTEM") == "spaces"
 audio_mode = []
 f0method_mode = []
 f0method_info = ""
+
 if limitation is True:
     audio_mode = ["Upload audio", "TTS Audio"]
     f0method_mode = ["pm", "harvest", "rmvpe"]
@@ -40,6 +41,9 @@ else:
     audio_mode = ["Input path", "Upload audio", "Youtube", "TTS Audio"]
     f0method_mode = ["pm", "harvest", "rmvpe", "crepe"]
     f0method_info = "PM is fast, Harvest is good but extremely slow, Rvmpe is alternative to harvest (might be better), and Crepe effect is good but requires GPU (Default: PM)"
+
+if os.path.isfile("rmvpe.pt"):
+    f0method_mode.insert(2, "rmvpe")
 
 def create_vc_fn(model_name, tgt_sr, net_g, vc, if_f0, version, file_index):
     def vc_fn(
@@ -343,7 +347,7 @@ def use_microphone(microphone):
 if __name__ == '__main__':
     load_hubert()
     categories = load_model()
-    tts_voice_list = asyncio.get_event_loop().run_until_complete(edge_tts.list_voices())
+    tts_voice_list = asyncio.new_event_loop().run_until_complete(edge_tts.list_voices())
     voices = [f"{v['ShortName']}-{v['Gender']}" for v in tts_voice_list]
     with gr.Blocks() as app:
         gr.Markdown(
