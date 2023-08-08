@@ -379,7 +379,12 @@ monotonic_align/core.c
 /dist/MoeGoe
 /dist
 
+/env
 .idea
 infer-web.py
 infer.py
 app-old.py
+hubert_base.pt
+rmvpe.pt
+test.py
+docs

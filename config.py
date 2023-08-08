@@ -11,42 +11,24 @@ class Config:
         self.gpu_name = None
         self.gpu_mem = None
         (
-            self.python_cmd,
-            self.listen_port,
             self.colab,
-            self.noparallel,
-            self.noautoopen,
-            self.api
+            self.api,
+            self.unsupported
         ) = self.arg_parse()
         self.x_pad, self.x_query, self.x_center, self.x_max = self.device_config()
 
     @staticmethod
     def arg_parse() -> tuple:
-        exe = sys.executable or "python"
         parser = argparse.ArgumentParser()
-        parser.add_argument("--port", type=int, default=7865, help="Listen port")
-        parser.add_argument("--pycmd", type=str, default=exe, help="Python command")
         parser.add_argument("--colab", action="store_true", help="Launch in colab")
-        parser.add_argument(
-            "--noparallel", action="store_true", help="Disable parallel processing"
-        )
-        parser.add_argument(
-            "--noautoopen",
-            action="store_true",
-            help="Do not open in browser automatically",
-        )
         parser.add_argument("--api", action="store_true", help="Launch with api")
+        parser.add_argument("--unsupported", action="store_true", help="Enable unsupported feature")
         cmd_opts = parser.parse_args()
 
-        cmd_opts.port = cmd_opts.port if 0 <= cmd_opts.port <= 65535 else 7865
-
         return (
-            cmd_opts.pycmd,
-            cmd_opts.port,
             cmd_opts.colab,
-            cmd_opts.noparallel,
-            cmd_opts.noautoopen,
-            cmd_opts.api
+            cmd_opts.api,
+            cmd_opts.unsupported
         )
 
     # has_mps is only available in nightly pytorch (for now) and MasOS 12.3+.
@@ -72,10 +54,10 @@ class Config:
                 or "1070" in self.gpu_name
                 or "1080" in self.gpu_name
             ):
-                print("Found GPU", self.gpu_name, ", force to fp32")
+                print("INFO: Found GPU", self.gpu_name, ", force to fp32")
                 self.is_half = False
             else:
-                print("Found GPU", self.gpu_name)
+                print("INFO: Found GPU", self.gpu_name)
             self.gpu_mem = int(
                 torch.cuda.get_device_properties(i_device).total_memory
                 / 1024
@@ -84,11 +66,11 @@ class Config:
                 + 0.4
             )
         elif self.has_mps():
-            print("No supported Nvidia GPU found, use MPS instead")
+            print("INFO: No supported Nvidia GPU found, use MPS instead")
             self.device = "mps"
             self.is_half = False
         else:
-            print("No supported Nvidia GPU found, use CPU instead")
+            print("INFO: No supported Nvidia GPU found, use CPU instead")
             self.device = "cpu"
             self.is_half = False
 

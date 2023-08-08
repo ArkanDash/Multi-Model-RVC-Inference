@@ -27,14 +27,23 @@ from vc_infer_pipeline import VC
 from config import Config
 config = Config()
 logging.getLogger("numba").setLevel(logging.WARNING)
-limitation = os.getenv("SYSTEM") == "spaces"
+spaces = os.getenv("SYSTEM") == "spaces"
+force_support = None
+if config.unsupported is False:
+    if config.device == "mps" or config.device == "cpu":
+        force_support = False
+else:
+    force_support = True
 
 audio_mode = []
 f0method_mode = []
 f0method_info = ""
 
-if limitation is True:
-    audio_mode = ["Upload audio", "TTS Audio"]
+if force_support is False or spaces is True:
+    if spaces is True:
+        audio_mode = ["Upload audio", "TTS Audio"]
+    else:
+        audio_mode = ["Input path", "Upload audio", "TTS Audio"]
     f0method_mode = ["pm", "harvest"]
     f0method_info = "PM is fast, Harvest is good but extremely slow, Rvmpe is alternative to harvest (might be better). (Default: PM)"
 else:
@@ -72,7 +81,7 @@ def create_vc_fn(model_name, tgt_sr, net_g, vc, if_f0, version, file_index):
                     return "You need to upload an audio", None
                 sampling_rate, audio = vc_upload
                 duration = audio.shape[0] / sampling_rate
-                if duration > 20 and limitation:
+                if duration > 20 and spaces:
                     return "Please upload an audio file that is less than 20 seconds. If you need to generate a longer audio file, please use Colab.", None
                 audio = (audio / np.iinfo(audio.dtype).max).astype(np.float32)
                 if len(audio.shape) > 1:
@@ -80,7 +89,7 @@ def create_vc_fn(model_name, tgt_sr, net_g, vc, if_f0, version, file_index):
                 if sampling_rate != 16000:
                     audio = librosa.resample(audio, orig_sr=sampling_rate, target_sr=16000)
             elif vc_audio_mode == "TTS Audio":
-                if len(tts_text) > 100 and limitation:
+                if len(tts_text) > 100 and spaces:
                     return "Text is too long", None
                 if tts_text is None or tts_voice is None:
                     return "You need to enter text and select a voice", None
@@ -122,62 +131,68 @@ def create_vc_fn(model_name, tgt_sr, net_g, vc, if_f0, version, file_index):
 
 def load_model():
     categories = []
-    with open("weights/folder_info.json", "r", encoding="utf-8") as f:
-        folder_info = json.load(f)
-    for category_name, category_info in folder_info.items():
-        if not category_info['enable']:
-            continue
-        category_title = category_info['title']
-        category_folder = category_info['folder_path']
-        description = category_info['description']
-        models = []
-        with open(f"weights/{category_folder}/model_info.json", "r", encoding="utf-8") as f:
-            models_info = json.load(f)
-        for character_name, info in models_info.items():
-            if not info['enable']:
+    if os.path.isfile("weights/folder_info.json"):
+        with open("weights/folder_info.json", "r", encoding="utf-8") as f:
+            folder_info = json.load(f)
+        for category_name, category_info in folder_info.items():
+            if not category_info['enable']:
                 continue
-            model_title = info['title']
-            model_name = info['model_path']
-            model_author = info.get("author", None)
-            model_cover = f"weights/{category_folder}/{character_name}/{info['cover']}"
-            model_index = f"weights/{category_folder}/{character_name}/{info['feature_retrieval_library']}"
-            cpt = torch.load(f"weights/{category_folder}/{character_name}/{model_name}", map_location="cpu")
-            tgt_sr = cpt["config"][-1]
-            cpt["config"][-3] = cpt["weight"]["emb_g.weight"].shape[0]  # n_spk
-            if_f0 = cpt.get("f0", 1)
-            version = cpt.get("version", "v1")
-            if version == "v1":
-                if if_f0 == 1:
-                    net_g = SynthesizerTrnMs256NSFsid(*cpt["config"], is_half=config.is_half)
+            category_title = category_info['title']
+            category_folder = category_info['folder_path']
+            description = category_info['description']
+            models = []
+            with open(f"weights/{category_folder}/model_info.json", "r", encoding="utf-8") as f:
+                models_info = json.load(f)
+            for character_name, info in models_info.items():
+                if not info['enable']:
+                    continue
+                model_title = info['title']
+                model_name = info['model_path']
+                model_author = info.get("author", None)
+                model_cover = f"weights/{category_folder}/{character_name}/{info['cover']}"
+                model_index = f"weights/{category_folder}/{character_name}/{info['feature_retrieval_library']}"
+                cpt = torch.load(f"weights/{category_folder}/{character_name}/{model_name}", map_location="cpu")
+                tgt_sr = cpt["config"][-1]
+                cpt["config"][-3] = cpt["weight"]["emb_g.weight"].shape[0]  # n_spk
+                if_f0 = cpt.get("f0", 1)
+                version = cpt.get("version", "v1")
+                if version == "v1":
+                    if if_f0 == 1:
+                        net_g = SynthesizerTrnMs256NSFsid(*cpt["config"], is_half=config.is_half)
+                    else:
+                        net_g = SynthesizerTrnMs256NSFsid_nono(*cpt["config"])
+                    model_version = "V1"
+                elif version == "v2":
+                    if if_f0 == 1:
+                        net_g = SynthesizerTrnMs768NSFsid(*cpt["config"], is_half=config.is_half)
+                    else:
+                        net_g = SynthesizerTrnMs768NSFsid_nono(*cpt["config"])
+                    model_version = "V2"
+                del net_g.enc_q
+                print(net_g.load_state_dict(cpt["weight"], strict=False))
+                net_g.eval().to(config.device)
+                if config.is_half:
+                    net_g = net_g.half()
                 else:
-                    net_g = SynthesizerTrnMs256NSFsid_nono(*cpt["config"])
-                model_version = "V1"
-            elif version == "v2":
-                if if_f0 == 1:
-                    net_g = SynthesizerTrnMs768NSFsid(*cpt["config"], is_half=config.is_half)
-                else:
-                    net_g = SynthesizerTrnMs768NSFsid_nono(*cpt["config"])
-                model_version = "V2"
-            del net_g.enc_q
-            print(net_g.load_state_dict(cpt["weight"], strict=False))
-            net_g.eval().to(config.device)
-            if config.is_half:
-                net_g = net_g.half()
-            else:
-                net_g = net_g.float()
-            vc = VC(tgt_sr, config)
-            print(f"Model loaded: {character_name} / {info['feature_retrieval_library']} | ({model_version})")
-            models.append((character_name, model_title, model_author, model_cover, model_version, create_vc_fn(model_name, tgt_sr, net_g, vc, if_f0, version, model_index)))
-        categories.append([category_title, category_folder, description, models])
+                    net_g = net_g.float()
+                vc = VC(tgt_sr, config)
+                print(f"Model loaded: {character_name} / {info['feature_retrieval_library']} | ({model_version})")
+                models.append((character_name, model_title, model_author, model_cover, model_version, create_vc_fn(model_name, tgt_sr, net_g, vc, if_f0, version, model_index)))
+            categories.append([category_title, category_folder, description, models])
+    else:
+        categories = []
     return categories
 
 def download_audio(url, audio_provider):
+    logs = []
     if url == "":
         raise gr.Error("URL Required!")
         return "URL Required"
     if not os.path.exists("dl_audio"):
         os.mkdir("dl_audio")
     if audio_provider == "Youtube":
+        logs.append("Downloading the audio...")
+        yield None, "\n".join(logs)
         ydl_opts = {
             'noplaylist': True,
             'format': 'bestaudio/best',
@@ -187,24 +202,28 @@ def download_audio(url, audio_provider):
             }],
             "outtmpl": 'dl_audio/audio',
         }
+        audio_path = "dl_audio/audio.wav"
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
-        return "Download Complete"
+        logs.append("Download Complete.")
+        yield audio_path, "\n".join(logs)
 
 def cut_vocal_and_inst(split_model):
     logs = []
-    audio_path = "dl_audio/audio.wav"
-    command = f"demucs --two-stems=vocals -n {split_model} {audio_path} -o output"
-    result = subprocess.run(command.split(), stdout=subprocess.PIPE)
+    logs.append("Starting the audio splitting process...")
+    yield "\n".join(logs), None, None, None, None
+    command = f"demucs --two-stems=vocals -n {split_model} dl_audio/audio.wav -o output"
+    result = subprocess.Popen(command.split(), stdout=subprocess.PIPE, text=True)
+    for line in result.stdout:
+        logs.append(line)
+        yield "\n".join(logs), None, None, None, None
+    print(result.stdout)
     vocal = f"output/{split_model}/audio/vocals.wav"
     inst = f"output/{split_model}/audio/no_vocals.wav"
-    print(result.stdout.decode())
-    logs.append(result.stdout.decode())
-    yield "\n".join(logs), None, None, None, None
-    logs.append("Splitter Complete")
-    yield "\n".join(logs), vocal, inst, audio_path, vocal
+    logs.append("Audio splitting complete.")
+    yield "\n".join(logs), vocal, inst, vocal
 
-def combine_vocal_and_inst(audio_data, audio_volume, split_model):
+def combine_vocal_and_inst(audio_data, vocal_volume, inst_volume, split_model):
     if not os.path.exists("output/result"):
         os.mkdir("output/result")
     vocal_path = "output/result/output.wav"
@@ -215,7 +234,7 @@ def combine_vocal_and_inst(audio_data, audio_volume, split_model):
         wave_file.setsampwidth(2)
         wave_file.setframerate(audio_data[0])
         wave_file.writeframes(audio_data[1].tobytes())
-    command =  f'ffmpeg -y -i {inst_path} -i {vocal_path} -filter_complex [1:a]volume={audio_volume}dB[v];[0:a][v]amix=inputs=2:duration=longest -b:a 320k -c:a libmp3lame {output_path}'
+    command =  f'ffmpeg -y -i {inst_path} -i {vocal_path} -filter_complex [0:a]volume={inst_volume}[i];[1:a]volume={vocal_volume}[v];[i][v]amix=inputs=2:duration=longest[a] -map [a] -b:a 320k -c:a libmp3lame {output_path}'
     result = subprocess.run(command.split(), stdout=subprocess.PIPE)
     print(result.stdout.decode())
     return output_path
@@ -254,6 +273,7 @@ def change_audio_mode(vc_audio_mode):
             gr.Audio.update(visible=False),
             gr.Audio.update(visible=False),
             gr.Slider.update(visible=False),
+            gr.Slider.update(visible=False),
             gr.Audio.update(visible=False),
             gr.Button.update(visible=False),
             # TTS
@@ -278,6 +298,7 @@ def change_audio_mode(vc_audio_mode):
             gr.Audio.update(visible=False),
             gr.Audio.update(visible=False),
             gr.Audio.update(visible=False),
+            gr.Slider.update(visible=False),
             gr.Slider.update(visible=False),
             gr.Audio.update(visible=False),
             gr.Button.update(visible=False),
@@ -304,6 +325,7 @@ def change_audio_mode(vc_audio_mode):
             gr.Audio.update(visible=True),
             gr.Audio.update(visible=True),
             gr.Slider.update(visible=True),
+            gr.Slider.update(visible=True),
             gr.Audio.update(visible=True),
             gr.Button.update(visible=True),
             # TTS
@@ -328,6 +350,7 @@ def change_audio_mode(vc_audio_mode):
             gr.Audio.update(visible=False),
             gr.Audio.update(visible=False),
             gr.Audio.update(visible=False),
+            gr.Slider.update(visible=False),
             gr.Slider.update(visible=False),
             gr.Audio.update(visible=False),
             gr.Button.update(visible=False),
@@ -354,6 +377,12 @@ if __name__ == '__main__':
             "[![Repository](https://img.shields.io/badge/Github-Multi%20Model%20RVC%20Inference-blue?style=for-the-badge&logo=github)](https://github.com/ArkanDash/Multi-Model-RVC-Inference)\n\n"+
             "</div>"
         )
+        if categories == []:
+            gr.Markdown(
+                "<div align='center'>\n\n"+
+                "## No model found, please add the model into weights folder\n\n"+
+                "</div>"
+            )
         for (folder_title, folder, description, models) in categories:
             with gr.TabItem(folder_title):
                 if description:
@@ -361,7 +390,7 @@ if __name__ == '__main__':
                 with gr.Tabs():
                     if not models:
                         gr.Markdown("# <center> No Model Loaded.")
-                        gr.Markdown("## <center> Please add model or fix your model path.")
+                        gr.Markdown("## <center> Please add the model or fix your model path.")
                         continue
                     for (name, title, author, cover, model_version, vc_fn) in models:
                         with gr.TabItem(name):
@@ -375,7 +404,7 @@ if __name__ == '__main__':
                                     '</div>'
                                 )
                             with gr.Row():
-                                if limitation is False:
+                                if spaces is False:
                                     with gr.TabItem("Input"):
                                         with gr.Row():
                                             with gr.Column():
@@ -390,6 +419,7 @@ if __name__ == '__main__':
                                                 vc_link = gr.Textbox(label="Youtube URL", visible=False, info="Example: https://www.youtube.com/watch?v=Nc0sB1Bmf-A", placeholder="https://www.youtube.com/watch?v=...")
                                                 vc_log_yt = gr.Textbox(label="Output Information", visible=False, interactive=False)
                                                 vc_download_button = gr.Button("Download Audio", variant="primary", visible=False)
+                                                vc_audio_preview = gr.Audio(label="Audio Preview", visible=False)
                                                 # TTS
                                                 tts_text = gr.Textbox(label="TTS text", info="Text to speech input", visible=False)
                                                 tts_voice = gr.Dropdown(label="Edge-tts speaker", choices=voices, visible=False, allow_custom_value=False, value="en-US-AnaNeural-Female")
@@ -399,7 +429,6 @@ if __name__ == '__main__':
                                                 vc_split = gr.Button("Split Audio", variant="primary", visible=False)
                                                 vc_vocal_preview = gr.Audio(label="Vocal Preview", visible=False)
                                                 vc_inst_preview = gr.Audio(label="Instrumental Preview", visible=False)
-                                                vc_audio_preview = gr.Audio(label="Audio Preview", visible=False)
                                     with gr.TabItem("Convert"):
                                         with gr.Row():
                                             with gr.Column():
@@ -458,14 +487,24 @@ if __name__ == '__main__':
                                                 vc_log = gr.Textbox(label="Output Information", interactive=False)
                                                 vc_output = gr.Audio(label="Output Audio", interactive=False)
                                                 vc_convert = gr.Button("Convert", variant="primary")
-                                                vc_volume = gr.Slider(
+                                                vc_vocal_volume = gr.Slider(
                                                     minimum=0,
                                                     maximum=10,
                                                     label="Vocal volume",
-                                                    value=4,
+                                                    value=1,
                                                     interactive=True,
                                                     step=1,
-                                                    info="Adjust vocal volume (Default: 4}",
+                                                    info="Adjust vocal volume (Default: 1}",
+                                                    visible=False
+                                                )
+                                                vc_inst_volume = gr.Slider(
+                                                    minimum=0,
+                                                    maximum=10,
+                                                    label="Instrument volume",
+                                                    value=1,
+                                                    interactive=True,
+                                                    step=1,
+                                                    info="Adjust instrument volume (Default: 1}",
                                                     visible=False
                                                 )
                                                 vc_combined_output = gr.Audio(label="Output Combined Audio", visible=False)
@@ -483,13 +522,13 @@ if __name__ == '__main__':
                                         vc_link = gr.Textbox(label="Youtube URL", visible=False, info="Example: https://www.youtube.com/watch?v=Nc0sB1Bmf-A", placeholder="https://www.youtube.com/watch?v=...")
                                         vc_log_yt = gr.Textbox(label="Output Information", visible=False, interactive=False)
                                         vc_download_button = gr.Button("Download Audio", variant="primary", visible=False)
+                                        vc_audio_preview = gr.Audio(label="Audio Preview", visible=False)
                                         # Splitter
                                         vc_split_model = gr.Dropdown(label="Splitter Model", choices=["hdemucs_mmi", "htdemucs", "htdemucs_ft", "mdx", "mdx_q", "mdx_extra_q"], allow_custom_value=False, visible=False, value="htdemucs", info="Select the splitter model (Default: htdemucs)")
                                         vc_split_log = gr.Textbox(label="Output Information", visible=False, interactive=False)
                                         vc_split = gr.Button("Split Audio", variant="primary", visible=False)
                                         vc_vocal_preview = gr.Audio(label="Vocal Preview", visible=False)
                                         vc_inst_preview = gr.Audio(label="Instrumental Preview", visible=False)
-                                        vc_audio_preview = gr.Audio(label="Audio Preview", visible=False)
                                         # TTS
                                         tts_text = gr.Textbox(label="TTS text", info="Text to speech input", visible=False)
                                         tts_voice = gr.Dropdown(label="Edge-tts speaker", choices=voices, visible=False, allow_custom_value=False, value="en-US-AnaNeural-Female")
@@ -549,14 +588,24 @@ if __name__ == '__main__':
                                         vc_log = gr.Textbox(label="Output Information", interactive=False)
                                         vc_output = gr.Audio(label="Output Audio", interactive=False)
                                         vc_convert = gr.Button("Convert", variant="primary")
-                                        vc_volume = gr.Slider(
+                                        vc_vocal_volume = gr.Slider(
                                             minimum=0,
                                             maximum=10,
                                             label="Vocal volume",
-                                            value=4,
+                                            value=1,
                                             interactive=True,
                                             step=1,
-                                            info="Adjust vocal volume (Default: 4}",
+                                            info="Adjust vocal volume (Default: 1}",
+                                            visible=False
+                                        )
+                                        vc_inst_volume = gr.Slider(
+                                            minimum=0,
+                                            maximum=10,
+                                            label="Instrument volume",
+                                            value=1,
+                                            interactive=True,
+                                            step=1,
+                                            info="Adjust instrument volume (Default: 1}",
                                             visible=False
                                         )
                                         vc_combined_output = gr.Audio(label="Output Combined Audio", visible=False)
@@ -582,16 +631,16 @@ if __name__ == '__main__':
                         vc_download_button.click(
                             fn=download_audio, 
                             inputs=[vc_link, vc_download_audio], 
-                            outputs=[vc_log_yt]
+                            outputs=[vc_audio_preview, vc_log_yt]
                         )
                         vc_split.click(
                             fn=cut_vocal_and_inst, 
                             inputs=[vc_split_model], 
-                            outputs=[vc_split_log, vc_vocal_preview, vc_inst_preview, vc_audio_preview, vc_input]
+                            outputs=[vc_split_log, vc_vocal_preview, vc_inst_preview, vc_input]
                         )
                         vc_combine.click(
                             fn=combine_vocal_and_inst,
-                            inputs=[vc_output, vc_volume, vc_split_model],
+                            inputs=[vc_output, vc_vocal_volume, vc_inst_volume, vc_split_model],
                             outputs=[vc_combined_output]
                         )
                         vc_microphone_mode.change(
@@ -613,10 +662,11 @@ if __name__ == '__main__':
                                 vc_split_model,
                                 vc_split_log,
                                 vc_split,
+                                vc_audio_preview,
                                 vc_vocal_preview,
                                 vc_inst_preview,
-                                vc_audio_preview,
-                                vc_volume,
+                                vc_vocal_volume,
+                                vc_inst_volume,
                                 vc_combined_output,
                                 vc_combine,
                                 tts_text,
