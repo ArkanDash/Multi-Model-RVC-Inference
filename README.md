@@ -40,4 +40,5 @@ pip install -r requirements.txt
 python app.py
 ```
 # Other Inference
-[Simple RVC Inference](https://github.com/ArkanDash/rvc-simple-inference)
+[![Advanced RVC Inference](https://img.shields.io/badge/Github-Advanced_RVC_Inference-blue?style=for-the-badge&logo=github)](https://github.com/ArkanDash/Multi-Model-RVC-Inference)
+[Advanced RVC Inference](https://github.com/ArkanDash/rvc-simple-inference)
