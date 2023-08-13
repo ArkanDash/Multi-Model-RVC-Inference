@@ -186,8 +186,9 @@ def load_model():
 def download_audio(url, audio_provider):
     logs = []
     if url == "":
-        raise gr.Error("URL Required!")
-        return "URL Required"
+        logs.append("URL required!")
+        yield None, "\n".join(logs)
+        return None, "\n".join(logs)
     if not os.path.exists("dl_audio"):
         os.mkdir("dl_audio")
     if audio_provider == "Youtube":
@@ -211,12 +212,12 @@ def download_audio(url, audio_provider):
 def cut_vocal_and_inst(split_model):
     logs = []
     logs.append("Starting the audio splitting process...")
-    yield "\n".join(logs), None, None, None, None
+    yield "\n".join(logs), None, None, None
     command = f"demucs --two-stems=vocals -n {split_model} dl_audio/audio.wav -o output"
     result = subprocess.Popen(command.split(), stdout=subprocess.PIPE, text=True)
     for line in result.stdout:
         logs.append(line)
-        yield "\n".join(logs), None, None, None, None
+        yield "\n".join(logs), None, None, None
     print(result.stdout)
     vocal = f"output/{split_model}/audio/vocals.wav"
     inst = f"output/{split_model}/audio/no_vocals.wav"
