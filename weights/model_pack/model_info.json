@@ -1,5 +1,5 @@
 {
-	"CHARACTER_TAB_NAME": {
+	"FOLDER_PATH": {
 		"enable": true,
 		"model_path": "CHARACTER_BASEMODEL",
 		"title": "CHARACTER_NAME",
