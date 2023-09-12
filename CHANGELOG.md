@@ -1,4 +1,8 @@
 13/08/2023 Changelog: <br />
+- Added documentation.
+- Support for non json file.
+
+13/08/2023 Changelog: <br />
 - Fix bugs.
 
 08/08/2023 Changelog: <br />

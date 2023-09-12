@@ -2,8 +2,8 @@
 	"CHARACTER_TAB_NAME": {
 		"enable": true,
 		"model_path": "CHARACTER_BASEMODEL",
-        "title": "CHARACTER_NAME",
-        "cover": "CHARACTER_IMAGE",
+		"title": "CHARACTER_NAME",
+		"cover": "CHARACTER_IMAGE",
 		"feature_retrieval_library": "CHARACTER_MODEL_INDEX",
 		"author": "MODEL_AUTHOR"
     }

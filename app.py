@@ -132,6 +132,9 @@ def create_vc_fn(model_name, tgt_sr, net_g, vc, if_f0, version, file_index):
 def load_model():
     categories = []
     if os.path.isfile("weights/folder_info.json"):
+        for _, w_dirs, _ in os.walk(f"weights"):
+            category_count_total = len(w_dirs)
+        category_count = 1
         with open("weights/folder_info.json", "r", encoding="utf-8") as f:
             folder_info = json.load(f)
         for category_name, category_info in folder_info.items():
@@ -140,7 +143,11 @@ def load_model():
             category_title = category_info['title']
             category_folder = category_info['folder_path']
             description = category_info['description']
+            print(f"Load {category_title} [{category_count}/{category_count_total}]")
             models = []
+            for _, m_dirs, _ in os.walk(f"weights/{category_folder}"):
+                model_count_total = len(m_dirs)
+            model_count = 1
             with open(f"weights/{category_folder}/model_info.json", "r", encoding="utf-8") as f:
                 models_info = json.load(f)
             for character_name, info in models_info.items():
@@ -176,9 +183,57 @@ def load_model():
                 else:
                     net_g = net_g.float()
                 vc = VC(tgt_sr, config)
-                print(f"Model loaded: {character_name} / {info['feature_retrieval_library']} | ({model_version})")
+                print(f"Model loaded [{model_count}/{len(m_dirs)}]: {character_name} / {info['feature_retrieval_library']} | ({model_version})")
+                model_count += 1
                 models.append((character_name, model_title, model_author, model_cover, model_version, create_vc_fn(model_name, tgt_sr, net_g, vc, if_f0, version, model_index)))
-            categories.append([category_title, category_folder, description, models])
+            category_count += 1
+            categories.append([category_title, description, models])
+    elif os.path.exists("weights"):
+        models = []
+        for w_root, w_dirs, _ in os.walk("weights"):
+            model_count = 1
+            for sub_dir in w_dirs:
+                pth_files = glob.glob(f"weights/{sub_dir}/*.pth")
+                index_files = glob.glob(f"weights/{sub_dir}/*.index")
+                if pth_files != []:
+                    print(f"Model [{model_count}/{len(w_dirs)}]: No Model file detected, skipping...")
+                    continue
+                cpt = torch.load(pth_files[0])
+                tgt_sr = cpt["config"][-1]
+                cpt["config"][-3] = cpt["weight"]["emb_g.weight"].shape[0]  # n_spk
+                if_f0 = cpt.get("f0", 1)
+                version = cpt.get("version", "v1")
+                if version == "v1":
+                    if if_f0 == 1:
+                        net_g = SynthesizerTrnMs256NSFsid(*cpt["config"], is_half=config.is_half)
+                    else:
+                        net_g = SynthesizerTrnMs256NSFsid_nono(*cpt["config"])
+                    model_version = "V1"
+                elif version == "v2":
+                    if if_f0 == 1:
+                        net_g = SynthesizerTrnMs768NSFsid(*cpt["config"], is_half=config.is_half)
+                    else:
+                        net_g = SynthesizerTrnMs768NSFsid_nono(*cpt["config"])
+                    model_version = "V2"
+                del net_g.enc_q
+                print(net_g.load_state_dict(cpt["weight"], strict=False))
+                net_g.eval().to(config.device)
+                if config.is_half:
+                    net_g = net_g.half()
+                else:
+                    net_g = net_g.float()
+                vc = VC(tgt_sr, config)
+                if index_files == []:
+                    print("Warning: No Index file detected!")
+                    index_info = "None"
+                    model_index = ""
+                else:
+                    index_info = index_files[0]
+                    model_index = index_files[0]
+                print(f"Model loaded [{model_count}/{len(w_dirs)}]: {index_files[0]} / {index_info} | ({model_version})")
+                model_count += 1
+                models.append((index_files[0][:-4], index_files[0][:-4], "", "", model_version, create_vc_fn(index_files[0], tgt_sr, net_g, vc, if_f0, version, model_index)))
+        categories.append(["Models", "", models])
     else:
         categories = []
     return categories
@@ -384,7 +439,7 @@ if __name__ == '__main__':
                 "## No model found, please add the model into weights folder\n\n"+
                 "</div>"
             )
-        for (folder_title, folder, description, models) in categories:
+        for (folder_title, description, models) in categories:
             with gr.TabItem(folder_title):
                 if description:
                     gr.Markdown(f"### <center> {description}")
@@ -674,4 +729,4 @@ if __name__ == '__main__':
                                 tts_voice
                             ]
                         )
-        app.queue(concurrency_count=1, max_size=20, api_open=config.api).launch(share=config.colab)
+        app.queue(concurrency_count=1, max_size=20, api_open=config.api).launch(share=config.share)

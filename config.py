@@ -11,7 +11,7 @@ class Config:
         self.gpu_name = None
         self.gpu_mem = None
         (
-            self.colab,
+            self.share,
             self.api,
             self.unsupported
         ) = self.arg_parse()
@@ -20,13 +20,13 @@ class Config:
     @staticmethod
     def arg_parse() -> tuple:
         parser = argparse.ArgumentParser()
-        parser.add_argument("--colab", action="store_true", help="Launch in colab")
+        parser.add_argument("--share", action="store_true", help="Launch with public link")
         parser.add_argument("--api", action="store_true", help="Launch with api")
         parser.add_argument("--unsupported", action="store_true", help="Enable unsupported feature")
         cmd_opts = parser.parse_args()
 
         return (
-            cmd_opts.colab,
+            cmd_opts.share,
             cmd_opts.api,
             cmd_opts.unsupported
         )
