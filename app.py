@@ -195,7 +195,7 @@ def load_model():
             for sub_dir in w_dirs:
                 pth_files = glob.glob(f"weights/{sub_dir}/*.pth")
                 index_files = glob.glob(f"weights/{sub_dir}/*.index")
-                if pth_files != []:
+                if pth_files == []:
                     print(f"Model [{model_count}/{len(w_dirs)}]: No Model file detected, skipping...")
                     continue
                 cpt = torch.load(pth_files[0])
