@@ -123,9 +123,10 @@ def create_vc_fn(model_name, tgt_sr, net_g, vc, if_f0, version, file_index):
             print(f"{model_name} | {info}")
             logs.append(f"Successfully Convert {model_name}\n{info}")
             yield "\n".join(logs), (tgt_sr, audio_opt)
-        except:
+        except Exception as err:
             info = traceback.format_exc()
             print(info)
+            primt(f"Error when using {model_name}.\n{str(err)}")
             yield info, None
     return vc_fn
 
@@ -183,7 +184,7 @@ def load_model():
                 else:
                     net_g = net_g.float()
                 vc = VC(tgt_sr, config)
-                print(f"Model loaded [{model_count}/{len(m_dirs)}]: {character_name} / {info['feature_retrieval_library']} | ({model_version})")
+                print(f"Model loaded [{model_count}/{model_count_total}]: {character_name} / {info['feature_retrieval_library']} | ({model_version})")
                 model_count += 1
                 models.append((character_name, model_title, model_author, model_cover, model_version, create_vc_fn(model_name, tgt_sr, net_g, vc, if_f0, version, model_index)))
             category_count += 1
