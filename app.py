@@ -133,9 +133,6 @@ def create_vc_fn(model_name, tgt_sr, net_g, vc, if_f0, version, file_index):
 def load_model():
     categories = []
     if os.path.isfile("weights/folder_info.json"):
-        for _, w_dirs, _ in os.walk(f"weights"):
-            category_count_total = len(w_dirs)
-        category_count = 1
         with open("weights/folder_info.json", "r", encoding="utf-8") as f:
             folder_info = json.load(f)
         for category_name, category_info in folder_info.items():
@@ -144,11 +141,7 @@ def load_model():
             category_title = category_info['title']
             category_folder = category_info['folder_path']
             description = category_info['description']
-            print(f"Load {category_title} [{category_count}/{category_count_total}]")
             models = []
-            for _, m_dirs, _ in os.walk(f"weights/{category_folder}"):
-                model_count_total = len(m_dirs)
-            model_count = 1
             with open(f"weights/{category_folder}/model_info.json", "r", encoding="utf-8") as f:
                 models_info = json.load(f)
             for character_name, info in models_info.items():
@@ -184,8 +177,7 @@ def load_model():
                 else:
                     net_g = net_g.float()
                 vc = VC(tgt_sr, config)
-                print(f"Model loaded [{model_count}/{model_count_total}]: {character_name} / {info['feature_retrieval_library']} | ({model_version})")
-                model_count += 1
+                print(f"Model loaded: {character_name} / {info['feature_retrieval_library']} | ({model_version})")
                 models.append((character_name, model_title, model_author, model_cover, model_version, create_vc_fn(model_name, tgt_sr, net_g, vc, if_f0, version, model_index)))
             category_count += 1
             categories.append([category_title, description, models])
