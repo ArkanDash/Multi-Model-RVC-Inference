@@ -21,13 +21,14 @@ Please support the original RVC, without it, this inference wont be possible to 
     - Remove Crepe Support due to gpu requirement ✅
 
 ### Automatic Installation
-#### 1. Windows
-  Run the `start.bat` to download the model and dependencies.
-  Run the `run.bat` to run the script
-#### 2. MacOS & Linux
-  For MacOS. before running the script, please install [wget](https://formulae.brew.sh/formula/wget)
-  Run the `start.sh` to download the model and dependencies.
-  Run the `run.sh` to run the script
+  Install [ffmpeg](https://ffmpeg.org/) first before running these command.
+  - Windows
+  Run the `start.bat` to download the model and dependencies. <br />
+  Run the `run.bat` to run the inference
+  - MacOS & Linux
+  For MacOS. before running the script, please install [wget](https://formulae.brew.sh/formula/wget) <br />
+  Run the `start.sh` to download the model and dependencies. <br />
+  Run the `run.sh` to run the inference
 
 ### Manual Installation
 
@@ -44,13 +45,14 @@ Please support the original RVC, without it, this inference wont be possible to 
     pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
     ```
 
-2. Install Dependencies<br />
+2. Install [ffmpeg](https://ffmpeg.org/)
+
+3. Install Dependencies<br />
 ```bash
 pip install -r requirements.txt
 ```
-1. Install [ffmpeg](https://ffmpeg.org/)
 
-2. Download Pre-model 
+4. Download Pre-model 
 ```bash
 # Hubert Model
 https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/hubert_base.pt
