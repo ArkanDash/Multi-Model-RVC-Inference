@@ -1,3 +1,7 @@
+02/03/2024 Changelog: <br />
+- Rearrange code and update dependencies.
+- Add batch and shell command for easy installation.
+
 12/09/2023 Changelog: <br />
 - Added documentation.
 - Support for non json file.

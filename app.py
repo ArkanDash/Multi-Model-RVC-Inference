@@ -9,24 +9,30 @@ import librosa
 import torch
 import asyncio
 import edge_tts
-import yt_dlp
-import ffmpeg
-import subprocess
 import sys
 import io
-import wave
+
 from datetime import datetime
-from fairseq import checkpoint_utils
+from lib.config.config import Config
+from lib.vc.vc_infer_pipeline import VC
+from lib.vc.settings import change_audio_mode
+from lib.vc.audio import load_audio
 from lib.infer_pack.models import (
     SynthesizerTrnMs256NSFsid,
     SynthesizerTrnMs256NSFsid_nono,
     SynthesizerTrnMs768NSFsid,
     SynthesizerTrnMs768NSFsid_nono,
 )
-from vc_infer_pipeline import VC
-from config import Config
+from lib.vc.utils import (
+    combine_vocal_and_inst,
+    cut_vocal_and_inst,
+    download_audio,
+    load_hubert
+)
+
 config = Config()
 logging.getLogger("numba").setLevel(logging.WARNING)
+logger = logging.getLogger(__name__)
 spaces = os.getenv("SYSTEM") == "spaces"
 force_support = None
 if config.unsupported is False:
@@ -38,6 +44,7 @@ else:
 audio_mode = []
 f0method_mode = []
 f0method_info = ""
+hubert_model = load_hubert(config)
 
 if force_support is False or spaces is True:
     if spaces is True:
@@ -71,11 +78,14 @@ def create_vc_fn(model_name, tgt_sr, net_g, vc, if_f0, version, file_index):
     ):
         try:
             logs = []
-            print(f"Converting using {model_name}...")
+            logger.info(f"Converting using {model_name}...")
             logs.append(f"Converting using {model_name}...")
             yield "\n".join(logs), None
             if vc_audio_mode == "Input path" or "Youtube" and vc_input != "":
-                audio, sr = librosa.load(vc_input, sr=16000, mono=True)
+                audio = load_audio(vc_input, 16000)
+                audio_max = np.abs(audio).max() / 0.95
+                if audio_max > 1:
+                    audio /= audio_max
             elif vc_audio_mode == "Upload audio":
                 if vc_upload is None:
                     return "You need to upload an audio", None
@@ -93,9 +103,11 @@ def create_vc_fn(model_name, tgt_sr, net_g, vc, if_f0, version, file_index):
                     return "Text is too long", None
                 if tts_text is None or tts_voice is None:
                     return "You need to enter text and select a voice", None
-                asyncio.run(edge_tts.Communicate(tts_text, "-".join(tts_voice.split('-')[:-1])).save("tts.mp3"))
-                audio, sr = librosa.load("tts.mp3", sr=16000, mono=True)
-                vc_input = "tts.mp3"
+                os.makedirs("output", exist_ok=True)
+                os.makedirs(os.path.join("output", "tts"), exist_ok=True)
+                asyncio.run(edge_tts.Communicate(tts_text, "-".join(tts_voice.split('-')[:-1])).save(os.path.join("output", "tts", "tts.mp3")))
+                audio, sr = librosa.load(os.path.join("output", "tts", "tts.mp3"), sr=16000, mono=True)
+                vc_input = os.path.join("output", "tts", "tts.mp3")
             times = [0, 0, 0]
             f0_up_key = int(f0_up_key)
             audio_opt = vc.pipeline(
@@ -120,18 +132,19 @@ def create_vc_fn(model_name, tgt_sr, net_g, vc, if_f0, version, file_index):
                 f0_file=None,
             )
             info = f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}]: npy: {times[0]}, f0: {times[1]}s, infer: {times[2]}s"
-            print(f"{model_name} | {info}")
+            logger.info(f"{model_name} | {info}")
             logs.append(f"Successfully Convert {model_name}\n{info}")
             yield "\n".join(logs), (tgt_sr, audio_opt)
         except Exception as err:
             info = traceback.format_exc()
-            print(info)
-            primt(f"Error when using {model_name}.\n{str(err)}")
+            logger.error(info)
+            logger.error(f"Error when using {model_name}.\n{str(err)}")
             yield info, None
     return vc_fn
 
 def load_model():
     categories = []
+    category_count = 0
     if os.path.isfile("weights/folder_info.json"):
         with open("weights/folder_info.json", "r", encoding="utf-8") as f:
             folder_info = json.load(f)
@@ -170,14 +183,14 @@ def load_model():
                         net_g = SynthesizerTrnMs768NSFsid_nono(*cpt["config"])
                     model_version = "V2"
                 del net_g.enc_q
-                print(net_g.load_state_dict(cpt["weight"], strict=False))
+                logger.info(net_g.load_state_dict(cpt["weight"], strict=False))
                 net_g.eval().to(config.device)
                 if config.is_half:
                     net_g = net_g.half()
                 else:
                     net_g = net_g.float()
                 vc = VC(tgt_sr, config)
-                print(f"Model loaded: {character_name} / {info['feature_retrieval_library']} | ({model_version})")
+                logger.info(f"Model loaded: {character_name} / {info['feature_retrieval_library']} | ({model_version})")
                 models.append((character_name, model_title, model_author, model_cover, model_version, create_vc_fn(model_name, tgt_sr, net_g, vc, if_f0, version, model_index)))
             category_count += 1
             categories.append([category_title, description, models])
@@ -189,7 +202,7 @@ def load_model():
                 pth_files = glob.glob(f"weights/{sub_dir}/*.pth")
                 index_files = glob.glob(f"weights/{sub_dir}/*.index")
                 if pth_files == []:
-                    print(f"Model [{model_count}/{len(w_dirs)}]: No Model file detected, skipping...")
+                    logger.debug(f"Model [{model_count}/{len(w_dirs)}]: No Model file detected, skipping...")
                     continue
                 cpt = torch.load(pth_files[0])
                 tgt_sr = cpt["config"][-1]
@@ -209,7 +222,7 @@ def load_model():
                         net_g = SynthesizerTrnMs768NSFsid_nono(*cpt["config"])
                     model_version = "V2"
                 del net_g.enc_q
-                print(net_g.load_state_dict(cpt["weight"], strict=False))
+                logger.info(net_g.load_state_dict(cpt["weight"], strict=False))
                 net_g.eval().to(config.device)
                 if config.is_half:
                     net_g = net_g.half()
@@ -217,13 +230,13 @@ def load_model():
                     net_g = net_g.float()
                 vc = VC(tgt_sr, config)
                 if index_files == []:
-                    print("Warning: No Index file detected!")
+                    logger.warning("No Index file detected!")
                     index_info = "None"
                     model_index = ""
                 else:
                     index_info = index_files[0]
                     model_index = index_files[0]
-                print(f"Model loaded [{model_count}/{len(w_dirs)}]: {index_files[0]} / {index_info} | ({model_version})")
+                logger.info(f"Model loaded [{model_count}/{len(w_dirs)}]: {index_files[0]} / {index_info} | ({model_version})")
                 model_count += 1
                 models.append((index_files[0][:-4], index_files[0][:-4], "", "", model_version, create_vc_fn(index_files[0], tgt_sr, net_g, vc, if_f0, version, model_index)))
         categories.append(["Models", "", models])
@@ -231,191 +244,7 @@ def load_model():
         categories = []
     return categories
 
-def download_audio(url, audio_provider):
-    logs = []
-    if url == "":
-        logs.append("URL required!")
-        yield None, "\n".join(logs)
-        return None, "\n".join(logs)
-    if not os.path.exists("dl_audio"):
-        os.mkdir("dl_audio")
-    if audio_provider == "Youtube":
-        logs.append("Downloading the audio...")
-        yield None, "\n".join(logs)
-        ydl_opts = {
-            'noplaylist': True,
-            'format': 'bestaudio/best',
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'wav',
-            }],
-            "outtmpl": 'dl_audio/audio',
-        }
-        audio_path = "dl_audio/audio.wav"
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-        logs.append("Download Complete.")
-        yield audio_path, "\n".join(logs)
-
-def cut_vocal_and_inst(split_model):
-    logs = []
-    logs.append("Starting the audio splitting process...")
-    yield "\n".join(logs), None, None, None
-    command = f"demucs --two-stems=vocals -n {split_model} dl_audio/audio.wav -o output"
-    result = subprocess.Popen(command.split(), stdout=subprocess.PIPE, text=True)
-    for line in result.stdout:
-        logs.append(line)
-        yield "\n".join(logs), None, None, None
-    print(result.stdout)
-    vocal = f"output/{split_model}/audio/vocals.wav"
-    inst = f"output/{split_model}/audio/no_vocals.wav"
-    logs.append("Audio splitting complete.")
-    yield "\n".join(logs), vocal, inst, vocal
-
-def combine_vocal_and_inst(audio_data, vocal_volume, inst_volume, split_model):
-    if not os.path.exists("output/result"):
-        os.mkdir("output/result")
-    vocal_path = "output/result/output.wav"
-    output_path = "output/result/combine.mp3"
-    inst_path = f"output/{split_model}/audio/no_vocals.wav"
-    with wave.open(vocal_path, "w") as wave_file:
-        wave_file.setnchannels(1) 
-        wave_file.setsampwidth(2)
-        wave_file.setframerate(audio_data[0])
-        wave_file.writeframes(audio_data[1].tobytes())
-    command =  f'ffmpeg -y -i {inst_path} -i {vocal_path} -filter_complex [0:a]volume={inst_volume}[i];[1:a]volume={vocal_volume}[v];[i][v]amix=inputs=2:duration=longest[a] -map [a] -b:a 320k -c:a libmp3lame {output_path}'
-    result = subprocess.run(command.split(), stdout=subprocess.PIPE)
-    print(result.stdout.decode())
-    return output_path
-
-def load_hubert():
-    global hubert_model
-    models, _, _ = checkpoint_utils.load_model_ensemble_and_task(
-        ["hubert_base.pt"],
-        suffix="",
-    )
-    hubert_model = models[0]
-    hubert_model = hubert_model.to(config.device)
-    if config.is_half:
-        hubert_model = hubert_model.half()
-    else:
-        hubert_model = hubert_model.float()
-    hubert_model.eval()
-
-def change_audio_mode(vc_audio_mode):
-    if vc_audio_mode == "Input path":
-        return (
-            # Input & Upload
-            gr.Textbox.update(visible=True),
-            gr.Checkbox.update(visible=False),
-            gr.Audio.update(visible=False),
-            # Youtube
-            gr.Dropdown.update(visible=False),
-            gr.Textbox.update(visible=False),
-            gr.Textbox.update(visible=False),
-            gr.Button.update(visible=False),
-            # Splitter
-            gr.Dropdown.update(visible=False),
-            gr.Textbox.update(visible=False),
-            gr.Button.update(visible=False),
-            gr.Audio.update(visible=False),
-            gr.Audio.update(visible=False),
-            gr.Audio.update(visible=False),
-            gr.Slider.update(visible=False),
-            gr.Slider.update(visible=False),
-            gr.Audio.update(visible=False),
-            gr.Button.update(visible=False),
-            # TTS
-            gr.Textbox.update(visible=False),
-            gr.Dropdown.update(visible=False)
-        )
-    elif vc_audio_mode == "Upload audio":
-        return (
-            # Input & Upload
-            gr.Textbox.update(visible=False),
-            gr.Checkbox.update(visible=True),
-            gr.Audio.update(visible=True),
-            # Youtube
-            gr.Dropdown.update(visible=False),
-            gr.Textbox.update(visible=False),
-            gr.Textbox.update(visible=False),
-            gr.Button.update(visible=False),
-            # Splitter
-            gr.Dropdown.update(visible=False),
-            gr.Textbox.update(visible=False),
-            gr.Button.update(visible=False),
-            gr.Audio.update(visible=False),
-            gr.Audio.update(visible=False),
-            gr.Audio.update(visible=False),
-            gr.Slider.update(visible=False),
-            gr.Slider.update(visible=False),
-            gr.Audio.update(visible=False),
-            gr.Button.update(visible=False),
-            # TTS
-            gr.Textbox.update(visible=False),
-            gr.Dropdown.update(visible=False)
-        )
-    elif vc_audio_mode == "Youtube":
-        return (
-            # Input & Upload
-            gr.Textbox.update(visible=False),
-            gr.Checkbox.update(visible=False),
-            gr.Audio.update(visible=False),
-            # Youtube
-            gr.Dropdown.update(visible=True),
-            gr.Textbox.update(visible=True),
-            gr.Textbox.update(visible=True),
-            gr.Button.update(visible=True),
-            # Splitter
-            gr.Dropdown.update(visible=True),
-            gr.Textbox.update(visible=True),
-            gr.Button.update(visible=True),
-            gr.Audio.update(visible=True),
-            gr.Audio.update(visible=True),
-            gr.Audio.update(visible=True),
-            gr.Slider.update(visible=True),
-            gr.Slider.update(visible=True),
-            gr.Audio.update(visible=True),
-            gr.Button.update(visible=True),
-            # TTS
-            gr.Textbox.update(visible=False),
-            gr.Dropdown.update(visible=False)
-        )
-    elif vc_audio_mode == "TTS Audio":
-        return (
-            # Input & Upload
-            gr.Textbox.update(visible=False),
-            gr.Checkbox.update(visible=False),
-            gr.Audio.update(visible=False),
-            # Youtube
-            gr.Dropdown.update(visible=False),
-            gr.Textbox.update(visible=False),
-            gr.Textbox.update(visible=False),
-            gr.Button.update(visible=False),
-            # Splitter
-            gr.Dropdown.update(visible=False),
-            gr.Textbox.update(visible=False),
-            gr.Button.update(visible=False),
-            gr.Audio.update(visible=False),
-            gr.Audio.update(visible=False),
-            gr.Audio.update(visible=False),
-            gr.Slider.update(visible=False),
-            gr.Slider.update(visible=False),
-            gr.Audio.update(visible=False),
-            gr.Button.update(visible=False),
-            # TTS
-            gr.Textbox.update(visible=True),
-            gr.Dropdown.update(visible=True)
-        )
-
-def use_microphone(microphone):
-    if microphone == True:
-        return gr.Audio.update(source="microphone")
-    else:
-        return gr.Audio.update(source="upload")
-
 if __name__ == '__main__':
-    load_hubert()
     categories = load_model()
     tts_voice_list = asyncio.new_event_loop().run_until_complete(edge_tts.list_voices())
     voices = [f"{v['ShortName']}-{v['Gender']}" for v in tts_voice_list]
@@ -461,8 +290,7 @@ if __name__ == '__main__':
                                                 # Input
                                                 vc_input = gr.Textbox(label="Input audio path", visible=False)
                                                 # Upload
-                                                vc_microphone_mode = gr.Checkbox(label="Use Microphone", value=False, visible=True, interactive=True)
-                                                vc_upload = gr.Audio(label="Upload audio file", source="upload", visible=True, interactive=True)
+                                                vc_upload = gr.Audio(label="Upload audio file", sources=["upload", "microphone"], visible=True, interactive=True)
                                                 # Youtube
                                                 vc_download_audio = gr.Dropdown(label="Provider", choices=["Youtube"], allow_custom_value=False, visible=False, value="Youtube", info="Select provider (Default: Youtube)")
                                                 vc_link = gr.Textbox(label="Youtube URL", visible=False, info="Example: https://www.youtube.com/watch?v=Nc0sB1Bmf-A", placeholder="https://www.youtube.com/watch?v=...")
@@ -564,8 +392,7 @@ if __name__ == '__main__':
                                         # Input
                                         vc_input = gr.Textbox(label="Input audio path", visible=False)
                                         # Upload
-                                        vc_microphone_mode = gr.Checkbox(label="Use Microphone", value=False, visible=True, interactive=True)
-                                        vc_upload = gr.Audio(label="Upload audio file", source="upload", visible=True, interactive=True)
+                                        vc_upload = gr.Audio(label="Upload audio file", sources=["upload", "microphone"], visible=True, interactive=True)
                                         # Youtube
                                         vc_download_audio = gr.Dropdown(label="Provider", choices=["Youtube"], allow_custom_value=False, visible=False, value="Youtube", info="Select provider (Default: Youtube)")
                                         vc_link = gr.Textbox(label="Youtube URL", visible=False, info="Example: https://www.youtube.com/watch?v=Nc0sB1Bmf-A", placeholder="https://www.youtube.com/watch?v=...")
@@ -692,17 +519,11 @@ if __name__ == '__main__':
                             inputs=[vc_output, vc_vocal_volume, vc_inst_volume, vc_split_model],
                             outputs=[vc_combined_output]
                         )
-                        vc_microphone_mode.change(
-                            fn=use_microphone,
-                            inputs=vc_microphone_mode,
-                            outputs=vc_upload
-                        )
                         vc_audio_mode.change(
                             fn=change_audio_mode,
                             inputs=[vc_audio_mode],
                             outputs=[
                                 vc_input,
-                                vc_microphone_mode,
                                 vc_upload,
                                 vc_download_audio,
                                 vc_link,
@@ -722,4 +543,10 @@ if __name__ == '__main__':
                                 tts_voice
                             ]
                         )
-        app.queue(concurrency_count=1, max_size=20, api_open=config.api).launch(share=config.share)
+        app.queue(
+            max_size=20,
+            api_open=config.api,
+        ).launch(
+            share=config.share,
+            max_threads=1,
+        )

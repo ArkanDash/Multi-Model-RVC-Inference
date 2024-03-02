@@ -381,9 +381,6 @@ monotonic_align/core.c
 
 /env
 .idea
-infer-web.py
-infer.py
-app-old.py
-hubert_base.pt
-rmvpe.pt
-test.py
+.venv
+*.pt
+output

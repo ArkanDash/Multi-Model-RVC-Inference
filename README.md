@@ -16,24 +16,50 @@ Please support the original RVC, without it, this inference wont be possible to 
 - Demucs (Voice Splitter) [Internet required for downloading model] ✅
 - TTS Support ✅
 - Microphone Support ✅
-- HuggingFace Spaces Inference [FREE TIER CPU] ✅
+- HuggingFace Spaces Inference [for CPU Tier only] ✅
     - Remove Youtube & Input Path ✅
     - Remove Crepe Support due to gpu requirement ✅
 
-### Installation
+### Automatic Installation
+#### 1. Windows
+  Run the `start.bat` to download the model and dependencies.
+  Run the `run.bat` to run the script
+#### 2. MacOS & Linux
+  For MacOS. before running the script, please install [wget](https://formulae.brew.sh/formula/wget)
+  Run the `start.sh` to download the model and dependencies.
+  Run the `run.sh` to run the script
 
-1. Install Requirement <br />
+### Manual Installation
+
+1. Install Pytorch <br />
+    - CPU only (any OS)
+    ```bash
+    pip install torch torchvision torchaudio
+    ```
+    - Nvidia (CUDA used)
+    ```bash
+    # For Windows (Due to flashv2 not supported in windows, Issue: https://github.com/Dao-AILab/flash-attention/issues/345#issuecomment-1747473481)
+    pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu121
+    # Other (Linux, etc)
+    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+    ```
+
+2. Install Dependencies<br />
 ```bash
-pip install torch torchvision torchaudio
-
 pip install -r requirements.txt
 ```
+1. Install [ffmpeg](https://ffmpeg.org/)
 
-2. Install [ffmpeg](https://ffmpeg.org/)
+2. Download Pre-model 
+```bash
+# Hubert Model
+https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/hubert_base.pt
+# Save it to /assets/hubert/hubert_base.pt
 
-3. Download [Hubert Model](https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/hubert_base.pt) <br />
-
-4. [OPTIONAL] To use rmvpe pitch extraction, download this [rvmpe.pt](https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/rmvpe.pt)
+# RVMPE (rmvpe pitch extraction, Optional)
+https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/rmvpe.pt
+# Save it to /assets/rvmpe/rmvpe.pt
+```
 
 5. Run WebUI <br />
 ```bash

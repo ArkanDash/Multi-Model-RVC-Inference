@@ -13,7 +13,7 @@ class Config:
         (
             self.share,
             self.api,
-            self.unsupported
+            self.unsupported,
         ) = self.arg_parse()
         self.x_pad, self.x_query, self.x_center, self.x_max = self.device_config()
 
@@ -28,7 +28,7 @@ class Config:
         return (
             cmd_opts.share,
             cmd_opts.api,
-            cmd_opts.unsupported
+            cmd_opts.unsupported,
         )
 
     # has_mps is only available in nightly pytorch (for now) and MasOS 12.3+.
