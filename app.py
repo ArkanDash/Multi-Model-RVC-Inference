@@ -549,4 +549,5 @@ if __name__ == '__main__':
         ).launch(
             share=config.share,
             max_threads=1,
+            allowed_paths=["weights"]
         )
