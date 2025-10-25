@@ -32,27 +32,28 @@ Please support the original RVC, without it, this inference wont be possible to 
 
 ### Manual Installation
 
-1. Install Pytorch <br />
+1. Install Python 3.10 (Cannot use Python 3.11 or higher, due to unmaintained fairseq dependency)
+2. Install Pytorch <br />
     - CPU only (any OS)
     ```bash
-    pip install torch torchvision torchaudio
+    pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cpu
     ```
     - Nvidia (CUDA used)
     ```bash
     # For Windows (Due to flashv2 not supported in windows, Issue: https://github.com/Dao-AILab/flash-attention/issues/345#issuecomment-1747473481)
-    pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu121
+    pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu118
     # Other (Linux, etc)
     pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
     ```
 
-2. Install [ffmpeg](https://ffmpeg.org/)
+3. Install [ffmpeg](https://ffmpeg.org/)
 
-3. Install Dependencies<br />
+4. Install Dependencies<br />
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Download Pre-model 
+1. Download Pre-model 
 ```bash
 # Hubert Model
 https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/hubert_base.pt
@@ -63,7 +64,7 @@ https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/rmvpe.pt
 # Save it to /assets/rvmpe/rmvpe.pt
 ```
 
-5. Run WebUI <br />
+6. Run WebUI <br />
 ```bash
 python app.py
 ```
