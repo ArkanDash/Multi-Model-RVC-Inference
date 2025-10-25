@@ -2,15 +2,15 @@ import os
 import wave
 import subprocess
 import yt_dlp
-import ffmpeg
 import logging
+
 from fairseq import checkpoint_utils
 logger = logging.getLogger(__name__)
 
 def load_hubert(config):
     path_check = os.path.exists("assets/hubert/hubert_base.pt")
     if path_check is False:
-        logger.warn("hubert_base.pt is missing. Please check the documentation for to get it.")
+        logger.warning("hubert_base.pt is missing. Please check the documentation for to get it.")
     else:
         logger.info("hubert_base.pt found.")
     models, _, _ = checkpoint_utils.load_model_ensemble_and_task(

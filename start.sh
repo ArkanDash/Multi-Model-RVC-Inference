@@ -15,10 +15,10 @@ source .venv/bin/activate
 # Check for Nvidia GPU using nvidia-smi
 if nvidia-smi &> /dev/null; then
   # Install GPU version
-  pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu121
+  pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu118
 else
   # Install CPU version
-  pip install torch torchvision torchaudio -f https://download.pytorch.org/whl/cpu
+  pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cpu
 fi
 
 # Install dependencies from requirements.txt

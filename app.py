@@ -9,8 +9,6 @@ import librosa
 import torch
 import asyncio
 import edge_tts
-import sys
-import io
 
 from datetime import datetime
 from lib.config.config import Config

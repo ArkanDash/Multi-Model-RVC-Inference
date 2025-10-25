@@ -17,10 +17,10 @@ rem Check for Nvidia GPU using nvidia-smi
 nvidia-smi > NUL 2>&1
 IF ERRORLEVEL 1 (
   rem Install CPU version
-  pip install torch torchvision torchaudio -f https://download.pytorch.org/whl/cpu
+  pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cpu
 ) ELSE (
   rem Install GPU version
-  pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu121
+  pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu118
 )
 
 rem Install dependencies from requirements.txt
